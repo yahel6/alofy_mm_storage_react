@@ -5,13 +5,13 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBcNtpek7jSyN9AycVV2wW7wwDd7I8FAYA",
-  authDomain: "alofy-mm-storage.firebaseapp.com",
-  projectId: "alofy-mm-storage",
-  storageBucket: "alofy-mm-storage.firebasestorage.app",
-  messagingSenderId: "223294260203",
-  appId: "1:223294260203:web:604ee34e34630cafc60fae",
-  measurementId: "G-LDKKQVRYC8"
+  apiKey: import.meta.env.VITE_API_KEY,
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_APP_ID,
+  measurementId: import.meta.env.VITE_MEASUREMENT_ID
 };
 
 // Initialize Firebase

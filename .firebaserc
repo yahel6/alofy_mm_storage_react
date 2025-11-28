@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "alofy-mm-storage"
-  }
+    "default": "alofy-mm-storage-app"
+  },
+  "targets": {},
+  "etags": {}
 }

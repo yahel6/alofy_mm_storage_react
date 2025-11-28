@@ -69,7 +69,7 @@ function EditActivityEquipmentPage() {
   const title = `עריכת ציוד (${activity?.name || '...'})`;
 
   return (
-    <div>
+    <div className="page-content">
       <HeaderNav title={title} />
       
       <div className="search-filter-container">

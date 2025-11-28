@@ -153,3 +153,7 @@
 .equipment-select-item.disabled .equipment-item-content:hover {
     background-color: var(--card-bg-color);
 }
+
+.page-content {
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 16px);
+}
