@@ -105,7 +105,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     if (loadingStates.users) return; 
 
     if (authUser && users.length > 0) {
-      const appUser = users.find(u => u.id === authUser.uid);
+      const appUser = users.find(u => u.uid === authUser.uid);
 
       if (appUser) {
         setCurrentUser(appUser);
@@ -113,10 +113,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         console.log("משתמש חדש זוהה! יוצר רשומה ב-Firestore...");
         
         const newUserData: AppUser = {
-          id: authUser.uid,
-          name: authUser.displayName || "משתמש חדש",
+          uid: authUser.uid,
+          displayName: authUser.displayName || "משתמש חדש",
           email: authUser.email || "",
-          isApproved: false // ברירת מחדל
+          approved: false,
+          role: 'pending' // ברירת מחדל
         };
 
         const userRef = doc(db, "users", authUser.uid);

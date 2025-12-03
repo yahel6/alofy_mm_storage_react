@@ -3,6 +3,11 @@
 
 /* */
 
+:root {
+  --bottom-nav-height: 64px;
+}
+
+
 .form-group {
     margin-bottom: 20px;
 }
@@ -72,3 +77,9 @@
 .btn-submit:active {
     transform: scale(0.98);
 }
+
+.page-content {
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 16px);
+}
+
+

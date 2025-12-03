@@ -27,10 +27,10 @@ function WarehouseDetailsPage() {
     }
     
     const today = new Date();
-    const validationThreshold = new Date(new Date().setDate(today.getDate() - 30));
+    const validationThreshold = new Date(new Date().setDate(today.getDate() - 7));
     
     switch (activeFilter) {
-      case 'validate': return itemsInWarehouse.filter(item => new Date(item.lastCheckDate) < validationThreshold);
+      case 'validate': return itemsInWarehouse.filter(item => new Date(item.lastCheckDate) < validationThreshold && item.status === 'available');
       case 'broken': return itemsInWarehouse.filter(item => item.status === 'broken' || item.status === 'repair');
       case 'loaned': return itemsInWarehouse.filter(item => item.status === 'loaned');
       default: return itemsInWarehouse;

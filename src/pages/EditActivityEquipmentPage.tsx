@@ -58,7 +58,6 @@ function EditActivityEquipmentPage() {
   const handleSave = async () => {
     if (!activityId) return;
     await updateActivityEquipment(activityId, Array.from(selectedIds), allEquipment);
-    alert("השינויים נשמרו בהצלחה!");
     navigate(-1);
   };
 

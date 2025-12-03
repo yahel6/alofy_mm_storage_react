@@ -64,7 +64,7 @@ function FilteredEquipmentPage() {
       
       return equipment.filter(item => {
         const itemDate = new Date(item.lastCheckDate);
-        return itemDate < thresholdDate; // החזר פריטים *שלפני* תאריך הסף
+        return (itemDate < thresholdDate && item.status === 'available'); // החזר פריטים *שלפני* תאריך הסף
       });
     }
 

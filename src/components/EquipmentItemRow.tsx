@@ -19,16 +19,16 @@ const statusMap = {
 const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick }) => { // 2. קיבלנו את onClick
   const { users } = useDatabase(); 
   
-  const manager = users.find(u => u.id === item.managerUserId);
-  const loanedToUser = users.find(u => u.id === item.loanedToUserId);
+  const manager = users.find(u => u.uid === item.managerUserId);
+  const loanedToUser = users.find(u => u.uid === item.loanedToUserId);
 
   const checkDate = new Date(item.lastCheckDate).toLocaleDateString('he-IL', {
     day: '2-digit', month: '2-digit', year: '2-digit'
   });
 
-  let secondaryInfo = `אחראי: ${manager?.name || '...'} • ווידוא: ${checkDate}`;
+  let secondaryInfo = `אחראי: ${manager?.displayName || '...'} • ווידוא: ${checkDate}`;
   if (item.status === 'loaned') {
-    secondaryInfo = `הושאל ל: ${loanedToUser?.name || '...'} • עד: 29/10/25`;
+    secondaryInfo = `הושאל ל: ${loanedToUser?.displayName || '...'} • עד: 29/10/25`;
   }
   
   const statusInfo = statusMap[item.status] || { text: 'לא ידוע', class: 'status-grey' };

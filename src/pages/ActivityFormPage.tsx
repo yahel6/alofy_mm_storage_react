@@ -54,7 +54,6 @@ function ActivityFormPage() {
       // --- מצב עריכה ---
       const success = await updateActivity(activityId, formData);
       if (success) {
-        alert("הפעילות עודכנה בהצלחה!");
         navigate(`/activities/${activityId}`); // חזור לפרטי הפעילות
       } else {
         alert("שגיאה בעדכון הפעילות.");
@@ -63,7 +62,6 @@ function ActivityFormPage() {
       // --- מצב הוספה ---
       const newId = await addNewActivity(formData);
       if (newId) {
-        alert("פעילות חדשה נוספה בהצלחה!");
         navigate('/activities'); // חזור לרשימת הפעילויות
       } else {
         alert("שגיאה בהוספת הפעילות.");
@@ -104,7 +102,7 @@ function ActivityFormPage() {
             >
               <option value="">בחר אחראי...</option>
               {users.map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
+                <option key={u.uid} value={u.uid}>{u.displayName}</option>
               ))}
             </select>
           </div>

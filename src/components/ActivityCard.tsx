@@ -12,7 +12,7 @@ interface ActivityCardProps {
 const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
   const { users } = useDatabase();
 
-  const manager = users.find(u => u.id === activity.managerUserId);
+  const manager = users.find(u => u.uid === activity.managerUserId);
   const date = new Date(activity.date).toLocaleDateString('he-IL', { 
     day: '2-digit', month: 'short', year: 'numeric' 
   });
@@ -29,7 +29,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
         <div>
           <h3 className="activity-card-title">{activity.name}</h3>
           <div className="activity-card-date">תאריך: {date}</div>
-          <div className="activity-card-person">אחראי: {manager?.name || '...'}</div>
+          <div className="activity-card-person">אחראי: {manager?.displayName || '...'}</div>
         </div>
       </div>
       <div className="activity-card-footer">

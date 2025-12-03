@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '../firebaseConfig'; // מייבאים את משתנה האימות
+import { auth, db } from '../firebaseConfig'; // מייבאים את משתנה האימות
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Navigate } from 'react-router-dom'; // זה כלי ה"זריקה" (redirect)
 
 // הרכיב הזה מקבל "ילדים" (children)
@@ -8,20 +9,35 @@ import { Navigate } from 'react-router-dom'; // זה כלי ה"זריקה" (redi
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   // state שיחזיק את המשתמש
   const [user, setUser] = useState<User | null>(null);
+  const [approved, setApproved] = useState<boolean|null>(null);
+
   // state שיגיד לנו אם סיימנו לבדוק
   const [isLoading, setIsLoading] = useState(true);
 
   // ה-Hook הזה רץ פעם אחת כשהרכיב עולה
   useEffect(() => {
     // זו אותה פונקציה בדיוק כמו ב-java.js!
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // משתמש מחובר
-        setUser(user);
-      } else {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
         // משתמש לא מחובר
         setUser(null);
+        setApproved(null);
+        setIsLoading(false);
+        return;
       }
+      // משתמש מחובר
+      setUser(user);
+      // קרא את הסטטוס
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (!snap.exists()) {
+        // גיבוי: צור כ-pending (נדיר אם ensureUserDoc רץ)
+        await setDoc(doc(db,'users',user.uid), {
+          uid: user.uid, email: user.email ?? null, displayName: user.displayName ?? '',
+          role: 'pending', approved: false
+        });
+        setApproved(false);
+      }
+      
       // סיימנו לבדוק
       setIsLoading(false);
     });
@@ -35,16 +51,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <div>טוען נתוני משתמש...</div>;
   }
 
-  // 2. אם סיימנו לבדוק *ויש* משתמש
-  if (user) {
-    // ...אז תציג את הילדים (שזה יהיה <App />)
-    return children;
+  // 2. אם סיימנו לבדוק *ואין* משתמש
+  if (!user) {
+    // 3. אם סיימנו לבדוק *ואין* משתמש
+    // ...אז "תזרוק" אותו לעמוד הלוגין
+    // (ה-replace מונע מהמשתמש ללחוץ "אחורה" בדפדפן ולחזור לאפליקציה)
+    return <Navigate to="/login" replace />;
   }
 
-  // 3. אם סיימנו לבדוק *ואין* משתמש
-  // ...אז "תזרוק" אותו לעמוד הלוגין
-  // (ה-replace מונע מהמשתמש ללחוץ "אחורה" בדפדפן ולחזור לאפליקציה)
-  return <Navigate to="/login" replace />;
+  if (approved === false) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <h2>הבקשה שלך ממתינה לאישור</h2>
+        <p>פנה לאדמין כדי לאשר את החשבון.</p>
+      </div>
+    );
+  }
+
+  // ...אז תציג את הילדים (שזה יהיה <App />)
+    return children;
 };
 
 export default ProtectedRoute;

@@ -55,7 +55,6 @@ function EquipmentFormPage() {
       // --- מצב עריכה ---
       const success = await updateEquipmentItem(itemId, formData);
       if (success) {
-        alert("הפריט עודכן בהצלחה!");
         // חזור לעמוד המחסן שממנו באנו
         navigate(`/warehouses/${formData.warehouseId}`);
       } else {
@@ -65,7 +64,6 @@ function EquipmentFormPage() {
       // --- מצב הוספה ---
       const newId = await addNewEquipment(formData);
       if (newId) {
-        alert("פריט חדש נוסף בהצלחה!");
         // חזור לרשימת המחסנים
         navigate('/warehouses');
       } else {
@@ -83,7 +81,7 @@ function EquipmentFormPage() {
   return (
     <div>
       <HeaderNav title={title} />
-      <div className="container">
+      <div className="container page-content">
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="name">שם הפריט</label>
@@ -122,7 +120,7 @@ function EquipmentFormPage() {
             >
               <option value="">בחר אחראי...</option>
               {users.map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
+                <option key={u.uid} value={u.uid}>{u.displayName}</option>
               ))}
             </select>
           </div>
@@ -153,9 +151,11 @@ function EquipmentFormPage() {
             />
           </div>
 
-          <button type="submit" className="btn-submit">
+          <div className="save-bar">
+            <button type="submit" className="btn-submit">
             {isEditMode ? 'שמור שינויים' : 'שמור פריט'}
-          </button>
+            </button>
+          </div>
         </form>
       </div>
     </div>

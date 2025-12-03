@@ -43,7 +43,7 @@ function HomePage() {
       if (item.status === 'loaned') loaned++;
       
       // ספירת ווידוא
-      if (new Date(item.lastCheckDate) < validateThreshold) {
+      if (new Date(item.lastCheckDate) < validateThreshold && item.status === 'available') {
         needsValidation++;
       }
     });
@@ -78,7 +78,7 @@ function HomePage() {
      return (
        <div>
          <div className="page-header">
-           <h1 className="main-title">שלום, {currentUser?.name || '...'}</h1>
+           <h1 className="main-title">שלום, {currentUser?.displayName || '...'}</h1>
            <div className="subtitle">טוען נתונים...</div>
          </div>
        </div>
@@ -88,7 +88,7 @@ function HomePage() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="main-title">שלום, {currentUser?.name || '...'}</h1>
+        <h1 className="main-title">שלום, {currentUser?.displayName || '...'}</h1>
         <div className="subtitle">סקירה כללית</div>
       </div>
       <div className="container">

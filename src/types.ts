@@ -2,10 +2,11 @@
 
 // טיפוס משתמש, מבוסס על מה שיצרת ב-java.js
 export interface AppUser {
-  id: string;
-  name: string;
+  uid: string;
+  displayName: string;
   email: string;
-  isApproved: boolean;
+  approved: boolean;
+  role: string;
 }
 
 // טיפוס מחסן
