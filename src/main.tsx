@@ -17,7 +17,9 @@ import ActivityDetailsPage from './pages/ActivityDetailsPage.tsx';
 import EditActivityEquipmentPage from './pages/EditActivityEquipmentPage.tsx';
 import EquipmentFormPage from './pages/EquipmentFormPage.tsx';
 import ActivityFormPage from './pages/ActivityFormPage.tsx'; 
-import FilteredEquipmentPage from './pages/FilteredEquipmentPage.tsx'; // 1. ייבוא העמוד החדש
+import FilteredEquipmentPage from './pages/FilteredEquipmentPage.tsx';
+import WarehouseFormPage from './pages/WarehouseFormPage';
+
 
 import './index.css' 
 
@@ -47,6 +49,18 @@ const router = createBrowserRouter([
         element: <WarehouseDetailsPage />,
       },
       {
+        path: "warehouses/new", // טופס הוספת מחסן
+        element: <WarehouseFormPage />,
+      },
+      {
+        path: "warehouses/:warehouseId/edit", // עריכת מחסן
+        element: <WarehouseFormPage />,
+      },
+      {
+        path: "warehouses/edit/:warehouseId", // עריכת מחסן
+        element: <WarehouseFormPage />,
+      },
+      {
         path: "activities", // רשימת פעילויות
         element: <ActivitiesPage />,
       },
@@ -74,12 +88,10 @@ const router = createBrowserRouter([
         path: "activities/edit/:activityId", // טופס עריכת *פרטי* פעילות
         element: <ActivityFormPage />,
       },
-      // --- 2. הוספת הנתיב החדש ---
       {
         path: "items/filter/:filterType", // נתיב לפריטים מסוננים
         element: <FilteredEquipmentPage />,
       }
-      // --------------------------
     ]
   },
   {

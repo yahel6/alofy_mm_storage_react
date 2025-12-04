@@ -33,7 +33,6 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose }) => {
     <div className="modal-overlay active" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-options">
-          {/* (עוד מעט ניצור את העמודים האלה) */}
           <div onClick={() => handleNavigation('/activity/new')}>
             <ActivityIcon />
             הוסף פעילות חדשה
@@ -41,6 +40,10 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose }) => {
           <div onClick={() => handleNavigation('/item/new')}>
             <EquipmentIcon />
             הוסף פריט ציוד חדש
+          </div>
+          <div onClick={() => handleNavigation('/warehouses/new')}>
+            <EquipmentIcon />
+            הוסף מחסן חדש
           </div>
         </div>
         <button className="modal-button btn-cancel" onClick={onClose}>

@@ -1,7 +1,7 @@
 // src/components/WarehouseOptionsModal.tsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateWarehouse, deleteWarehouseAndContents } from '../firebaseUtils';
+import { deleteWarehouseAndContents } from '../firebaseUtils';
 import { useDatabase } from '../contexts/DatabaseContext'; // נייבא כדי לקבל את רשימת הציוד
 import type { Warehouse } from '../types';
 import './Modal.css'; // שימוש חוזר בעיצוב המודאל הקיים
@@ -23,22 +23,9 @@ const WarehouseOptionsModal: React.FC<WarehouseOptionsModalProps> = ({ warehouse
   const navigate = useNavigate();
   const { equipment } = useDatabase(); // נקבל את כל הציוד הקיים
 
-  const handleEditName = async () => {
-    // שימוש ב-prompt כמו בקוד המקורי
-    const newName = prompt("הכנס שם חדש עבור המחסן:", warehouse.name);
-    
-    if (newName && newName.trim() !== "" && newName !== warehouse.name) {
-      const success = await updateWarehouse(warehouse.id, newName);
-      if (success) {
-        alert("שם המחסן עודכן בהצלחה!");
-        onClose();
-        // אין צורך לרענן, onSnapshot יעשה זאת
-      } else {
-        alert("שגיאה בעדכון השם.");
-      }
-    } else {
-      onClose();
-    }
+  const handleEdit = () => {
+    onClose();
+    navigate(`/warehouses/edit/${warehouse.id}`); // ניווט לעמוד העריכה
   };
 
   const handleDelete = async () => {
@@ -57,9 +44,9 @@ const WarehouseOptionsModal: React.FC<WarehouseOptionsModalProps> = ({ warehouse
         <h4 className="modal-title">אפשרויות עבור: {warehouse.name}</h4>
         
         <div className="modal-options">
-          <div onClick={handleEditName}>
+          <div onClick={handleEdit}>
             <EditIcon />
-            שנה שם מחסן
+            ערוך מחסן
           </div>
           <div onClick={handleDelete} style={{ color: 'var(--status-red)' }}>
             <DeleteIcon />

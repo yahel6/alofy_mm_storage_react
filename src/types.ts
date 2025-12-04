@@ -13,6 +13,8 @@ export interface AppUser {
 export interface Warehouse {
   id: string;
   name: string;
+  /** רשימת קטגוריות שהמחסן תומך בהן (אופציונלי) */
+  categories?: string[]; // ["מטענים","סנסורים","כבלים"]
 }
 
 // טיפוס פריט ציוד
@@ -20,6 +22,8 @@ export interface EquipmentItem {
   id: string;
   name: string;
   warehouseId: string;
+  /** קטגוריה בתוך המחסן (אופציונלי) */
+  category?: string | null;
   managerUserId: string;
   status: 'available' | 'charging' | 'broken' | 'repair' | 'loaned';
   lastCheckDate: string;

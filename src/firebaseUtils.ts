@@ -1,5 +1,5 @@
 // src/firebaseUtils.ts
-import { doc, updateDoc, deleteDoc, addDoc, collection, writeBatch, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import type { EquipmentItem, Activity, Warehouse} from './types';
 
@@ -172,21 +172,54 @@ export const updateActivityEquipment = async (activityId: string, newEquipmentId
   }
 }
 
-/**
- * מעדכן שם מחסן
- */
-export const updateWarehouse = async (warehouseId: string, newName: string) => {
-  if (!newName || newName.trim() === "") {
-    alert("שם מחסן לא יכול להיות ריק.");
+/** יצירת מחסן חדש (עם/בלי קטגוריות) */
+export const addNewWarehouse = async (data: { name: string; categories?: string[] }) => {
+  const name = (data.name ?? '').trim();
+  const categories = (data.categories ?? []).map(c => c.trim()).filter(Boolean);
+  if (!name) {
+    alert('שם מחסן לא יכול להיות ריק.');
+    return null;
+  }
+  try {
+    const ref = await addDoc(collection(db, 'warehouses'), {
+      name,
+      ...(categories.length ? { categories } : {})
+    });
+    return ref.id;
+  } catch (e) {
+    console.error('שגיאה בהוספת מחסן:', e);
+    alert('אירעה שגיאה בהוספת מחסן');
+    return null;
+  }
+};
+
+/** עדכון מחסן קיים (כולל עדכון קטגוריות) */
+export const updateWarehouse = async (warehouseId: string, data: { name: string; categories?: string[] }) => {
+  const name = (data.name ?? '').trim();
+  const categories = (data.categories ?? []).map(c => c.trim()).filter(Boolean);
+  if (!warehouseId) {
+    alert('שגיאה: חסר מזהה מחסן.');
     return false;
   }
-  const warehouseRef = doc(db, "warehouses", warehouseId);
+  if (!name) {
+    alert('שם מחסן לא יכול להיות ריק.');
+    return false;
+  }
   try {
-    await updateDoc(warehouseRef, { name: newName });
-    console.log(`מחסן ענן ${warehouseId} עודכן בהצלחה.`);
+    const ref = doc(db, 'warehouses', warehouseId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      alert('המחסן לא נמצא.');
+      return false;
+    }
+    await updateDoc(ref, {
+      name,
+      ...(categories ? { categories } : {})
+    });
     return true;
-  } catch (error) {
-    console.error("שגיאה בעדכון מחסן בענן:", error);
+  } catch (e) {
+    console.error('שגיאה בעדכון מחסן:', e);
+    alert('אירעה שגיאה בעדכון מחסן');
     return false;
   }
 };
