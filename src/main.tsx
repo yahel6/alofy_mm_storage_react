@@ -19,6 +19,8 @@ import EquipmentFormPage from './pages/EquipmentFormPage.tsx';
 import ActivityFormPage from './pages/ActivityFormPage.tsx'; 
 import FilteredEquipmentPage from './pages/FilteredEquipmentPage.tsx';
 import WarehouseFormPage from './pages/WarehouseFormPage';
+import AdminUsersPage from './pages/AdminUsersPage.tsx';
+import AdminOnly from './components/AdminOnlyRoute.tsx';
 
 
 import './index.css' 
@@ -91,6 +93,14 @@ const router = createBrowserRouter([
       {
         path: "items/filter/:filterType", // נתיב לפריטים מסוננים
         element: <FilteredEquipmentPage />,
+      },
+      {
+        path: "admin/users",
+        element: (
+          <AdminOnly>
+            <AdminUsersPage />
+          </AdminOnly>
+        )
       }
     ]
   },
