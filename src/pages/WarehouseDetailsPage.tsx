@@ -1,19 +1,17 @@
 // src/pages/WarehouseDetailsPage.tsx
-import { useState, useMemo } from 'react'; // 1. הוספנו useState
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import HeaderNav from '../components/HeaderNav';
 import EquipmentItemRow from '../components/EquipmentItemRow';
 import FilterChips from '../components/FilterChips';
 import StatusModal from '../components/StatusModal';
-import WarehouseOptionsModal from '../components/WarehouseOptionsModal'; // 2. ייבוא המודאל החדש
+import WarehouseOptionsModal from '../components/WarehouseOptionsModal';
+import SubItemsModal from '../components/SubItemsModal';
+import { bulkUpdateCategory } from '../firebaseUtils';
 import type { EquipmentItem } from '../types';
 
 type FilterType = 'all' | 'validate' | 'broken' | 'loaned';
-
-import { bulkUpdateCategory } from '../firebaseUtils';
-
-// ... imports
 
 function WarehouseDetailsPage() {
   const { warehouseId } = useParams<{ warehouseId: string }>();
@@ -24,6 +22,7 @@ function WarehouseDetailsPage() {
 
   const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
+  const [subItemsModalItem, setSubItemsModalItem] = useState<EquipmentItem | null>(null);
 
   // Bulk Selection State
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -51,8 +50,6 @@ function WarehouseDetailsPage() {
   const handleBulkUpdate = async () => {
     if (selectedItemIds.size === 0) return;
 
-    // newCategory is empty string if they refer to 'No Category', or actually empty string?
-    // Let's assume empty string means 'No Category' i.e. null
     const categoryToSet = bulkCategory || null;
 
     const success = await bulkUpdateCategory(Array.from(selectedItemIds), categoryToSet);
@@ -118,7 +115,6 @@ function WarehouseDetailsPage() {
 
   return (
     <div>
-      {/* 4. הוספת Prop לכותרת כדי להציג את כפתור 3 הנקודות */}
       <HeaderNav
         title={warehouse.name}
         onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
@@ -231,6 +227,7 @@ function WarehouseDetailsPage() {
               isSelectable={isSelectionMode}
               isSelected={selectedItemIds.has(item.id)}
               onToggle={() => toggleItemSelection(item.id)}
+              onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
             />
           ))
         )}
@@ -244,11 +241,19 @@ function WarehouseDetailsPage() {
         />
       )}
 
-      {/* 5. רינדור מותנה של המודאל החדש */}
+      {/* רינדור מותנה של המודאל החדש */}
       {isOptionsModalOpen && (
         <WarehouseOptionsModal
           warehouse={warehouse}
           onClose={() => setIsOptionsModalOpen(false)}
+        />
+      )}
+
+      {/* Modal for Sub-Items */}
+      {subItemsModalItem && (
+        <SubItemsModal
+          item={subItemsModalItem}
+          onClose={() => setSubItemsModalItem(null)}
         />
       )}
     </div>

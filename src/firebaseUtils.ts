@@ -395,3 +395,18 @@ export const bulkUpdateCategory = async (itemIds: string[], newCategory: string 
     return false;
   }
 };
+
+/**
+ * מעדכן את הפרופיל של המשתמש (שם תצוגה)
+ */
+export const updateUserProfile = async (uid: string, displayName: string) => {
+  const userRef = doc(db, 'users', uid);
+  try {
+    await updateDoc(userRef, { displayName });
+    console.log(`פרופיל משתמש ${uid} עודכן בהצלחה.`);
+    return true;
+  } catch (error) {
+    console.error("שגיאה בעדכון פרופיל משתמש:", error);
+    return false;
+  }
+};

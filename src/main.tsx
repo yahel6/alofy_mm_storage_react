@@ -11,19 +11,20 @@ import { DatabaseProvider } from './contexts/DatabaseContext.tsx';
 // ייבוא כל העמודים שהאפליקציה צריכה
 import HomePage from './pages/HomePage.tsx';
 import WarehousesPage from './pages/WarehousesPage.tsx';
-import WarehouseDetailsPage from './pages/WarehouseDetailsPage.tsx'; 
+import WarehouseDetailsPage from './pages/WarehouseDetailsPage.tsx';
 import ActivitiesPage from './pages/ActivitiesPage.tsx';
 import ActivityDetailsPage from './pages/ActivityDetailsPage.tsx';
 import EditActivityEquipmentPage from './pages/EditActivityEquipmentPage.tsx';
 import EquipmentFormPage from './pages/EquipmentFormPage.tsx';
-import ActivityFormPage from './pages/ActivityFormPage.tsx'; 
+import ActivityFormPage from './pages/ActivityFormPage.tsx';
 import FilteredEquipmentPage from './pages/FilteredEquipmentPage.tsx';
 import WarehouseFormPage from './pages/WarehouseFormPage';
 import AdminUsersPage from './pages/AdminUsersPage.tsx';
+import ProfilePage from './pages/ProfilePage.tsx';
 import AdminOnly from './components/AdminOnlyRoute.tsx';
 
 
-import './index.css' 
+import './index.css'
 
 // הגדרת הראוטר עם כל הנתיבים
 const router = createBrowserRouter([
@@ -101,6 +102,10 @@ const router = createBrowserRouter([
             <AdminUsersPage />
           </AdminOnly>
         )
+      },
+      {
+        path: "profile", // פרופיל משתמש
+        element: <ProfilePage />,
       }
     ]
   },

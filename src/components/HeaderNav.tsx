@@ -6,14 +6,14 @@ import './HeaderNav.css';
 // 1. הגדרנו את האייקון כאן, כי הוא שייך ל-HeaderNav
 const OptionsIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px">
-    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
   </svg>
 );
 
 interface HeaderNavProps {
   title: string;
   // 2. החלפנו את 'rightSlot' ב-prop ספציפי
-  onOptionsMenuClick?: () => void; 
+  onOptionsMenuClick?: () => void;
 }
 
 const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick }) => {
@@ -30,12 +30,18 @@ const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick }) => {
       </span>
       <h2 className="header-title">{title}</h2>
 
-      {/* 3. אם קיבלנו פונקציה, נציג את הכפתור */}
-      {onOptionsMenuClick && (
-        <div className="header-options-button" onClick={onOptionsMenuClick}>
-          <OptionsIcon />
+      <div className="header-left-actions" style={{ position: 'absolute', left: '16px', display: 'flex', gap: '8px', alignItems: 'center', zIndex: 10 }}>
+        {onOptionsMenuClick && (
+          <div className="header-icon-btn" onClick={onOptionsMenuClick}>
+            <OptionsIcon />
+          </div>
+        )}
+        <div className="header-icon-btn" onClick={() => navigate('/profile')}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+          </svg>
         </div>
-      )}
+      </div>
     </div>
   );
 };

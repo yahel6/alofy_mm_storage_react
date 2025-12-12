@@ -28,6 +28,14 @@ export interface EquipmentItem {
   status: 'available' | 'charging' | 'broken' | 'repair' | 'loaned';
   lastCheckDate: string;
   loanedToUserId: string | null;
+  quantity?: number;
+  subItems?: SubItem[];
+}
+
+export interface SubItem {
+  id: string;
+  name: string;
+  status: 'available' | 'broken' | 'missing' | 'loaned';
 }
 
 // טיפוס פעילות

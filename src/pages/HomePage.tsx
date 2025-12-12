@@ -2,7 +2,8 @@
 import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
-import './HomePage.css'; 
+import HeaderNav from '../components/HeaderNav';
+import './HomePage.css';
 
 
 // פונקציית עזר לפורמט תאריך (ללא שינוי)
@@ -22,8 +23,8 @@ const formatActivityDate = (dateString: string) => {
 };
 
 function HomePage() {
-  const { currentUser, equipment, activities, isLoading } = useDatabase(); 
-  const navigate = useNavigate(); 
+  const { currentUser, equipment, activities, isLoading } = useDatabase();
+  const navigate = useNavigate();
 
   // --- 1. עדכון חישוב נתוני "דורש טיפול" ---
   const attentionItems = useMemo(() => {
@@ -41,13 +42,13 @@ function HomePage() {
       if (item.status === 'broken') broken++;
       if (item.status === 'repair') repair++;
       if (item.status === 'loaned') loaned++;
-      
+
       // ספירת ווידוא
       if (new Date(item.lastCheckDate) < validateThreshold && item.status === 'available') {
         needsValidation++;
       }
     });
-    
+
     return [
       // --- הוספת השורה החדשה ---
       { id: 'validate', text: 'פריטים דורשי ווידוא', icon: '🗓️', iconClass: 'icon-orange', count: needsValidation, path: '/items/filter/validate' },
@@ -62,35 +63,32 @@ function HomePage() {
   // חישוב "פעילויות קרובות" (ללא שינוי)
   const upcomingActivities = useMemo(() => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    
+    today.setHours(0, 0, 0, 0);
+
     return activities
-      .filter(act => new Date(act.date) >= today) 
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
-      .slice(0, 3); 
+      .filter(act => new Date(act.date) >= today)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 3);
   }, [activities]);
 
   const handleAttentionClick = (path: string) => {
     navigate(path);
   };
-  
+
   if (isLoading && equipment.length === 0) {
-     return (
-       <div>
-         <div className="page-header">
-           <h1 className="main-title">שלום, {currentUser?.displayName || '...'}</h1>
-           <div className="subtitle">טוען נתונים...</div>
-         </div>
-       </div>
-     );
+    return (
+      <div>
+        <div className="page-header">
+          <h1 className="main-title">שלום, {currentUser?.displayName || '...'}</h1>
+          <div className="subtitle">טוען נתונים...</div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="main-title">שלום, {currentUser?.displayName || '...'}</h1>
-        <div className="subtitle">סקירה כללית</div>
-      </div>
+      <HeaderNav title={`שלום, ${currentUser?.displayName || '...'}`} />
       <div className="container">
         {/* --- כרטיס "דורש טיפול" --- */}
         <div className="dashboard-card" id="attention-card">
@@ -100,9 +98,9 @@ function HomePage() {
           <div className="card-content">
             {/* 2. הרשימה תרונדר אוטומטית עם הפריט החדש שנוסף */}
             {attentionItems.map(item => (
-              <div 
+              <div
                 key={item.id}
-                className="attention-item" 
+                className="attention-item"
                 onClick={() => handleAttentionClick(item.path)}
               >
                 <div className="attention-details">
@@ -130,11 +128,11 @@ function HomePage() {
                 const total = activity.equipmentRequiredIds.length + activity.equipmentMissingIds.length;
                 const available = activity.equipmentRequiredIds.length;
                 const hasGaps = available < total;
-                
+
                 return (
-                  <Link 
-                    to={`/activities/${activity.id}`} 
-                    key={activity.id} 
+                  <Link
+                    to={`/activities/${activity.id}`}
+                    key={activity.id}
                     className="activity-list-item"
                   >
                     <div className="activity-details">
@@ -157,7 +155,7 @@ function HomePage() {
             )}
           </div>
         </div>
-        
+
       </div>
     </div>
   );

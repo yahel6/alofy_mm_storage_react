@@ -8,6 +8,7 @@ interface EquipmentItemRowProps {
   isSelectable?: boolean;
   isSelected?: boolean;
   onToggle?: () => void;
+  onOpenSubItems?: (item: EquipmentItem) => void;
 }
 
 // ... (קבועי statusMap נשארים זהים)
@@ -19,7 +20,7 @@ const statusMap = {
   'loaned': { text: 'הושאל', class: 'status-loaned' }
 };
 
-const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle }) => { // 2. קיבלנו את onClick
+const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems }) => { // 2. קיבלנו את onClick
   const { users } = useDatabase();
 
   const manager = users.find(u => u.uid === item.managerUserId);
@@ -57,7 +58,35 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
       )}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={isSelectable && onToggle ? onToggle : undefined}>
         <div className="equipment-details">
-          <div className="equipment-name">{item.name}</div>
+          <div className="equipment-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>{item.name}</span>
+            {item.quantity && item.quantity > 1 && (
+              <span style={{ fontSize: '0.8em', color: '#aaa' }}>
+                (x{item.quantity})
+              </span>
+            )}
+            {/* New Button for Sub-Items */}
+            {item.subItems && item.subItems.length > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onOpenSubItems) onOpenSubItems(item);
+                }}
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '12px',
+                  borderRadius: '4px',
+                  border: '1px solid #666',
+                  background: 'transparent',
+                  color: '#aaa',
+                  marginRight: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                רשימת ציוד ({item.subItems.length})
+              </button>
+            )}
+          </div>
           <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
             {secondaryInfo}
           </div>

@@ -34,17 +34,33 @@
     text-align: center;
 }
 
+/* New shared class for header icons */
+.header-icon-btn {
+    padding: 10px;
+    cursor: pointer;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.header-icon-btn:active {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.header-icon-btn svg {
+    display: block;
+}
+
+/* Deprecated: replaced by header-left-actions container */
 .header-options-button {
     position: absolute;
-    /* ב-RTL, צד שמאל הוא ה"סוף" (Options) */
-    left: 16px;
+    left: 16px; 
     top: calc(40px + env(safe-area-inset-top));
     padding: 10px;
     z-index: 10;
     cursor: pointer;
     color: var(--text-primary);
-}
-
-.header-options-button svg {
-    display: block;
 }
