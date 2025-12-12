@@ -1,7 +1,7 @@
 // src/firebaseUtils.ts
 import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import type { EquipmentItem, Activity, Warehouse} from './types';
+import type { EquipmentItem, Activity, Warehouse } from './types';
 
 // סוגי הסטטוסים האפשריים
 type EquipmentStatus = EquipmentItem['status'];
@@ -14,7 +14,7 @@ type EquipmentStatus = EquipmentItem['status'];
 export const updateEquipmentStatus = async (itemId: string, newStatus: EquipmentStatus) => {
   console.log(`מעדכן סטטוס עבור ${itemId} ל-${newStatus}...`);
   const itemRef = doc(db, 'equipment', itemId);
-  
+
   const updateData: { status: EquipmentStatus, loanedToUserId?: string | null } = {
     status: newStatus
   };
@@ -40,7 +40,7 @@ export const deleteEquipmentItem = async (itemId: string) => {
   if (!confirm("האם אתה בטוח שברצונך למחוק את הפריט? אין דרך לשחזר פעולה זו.")) {
     return;
   }
-  
+
   console.log(`מוחק את פריט ${itemId}...`);
   const itemRef = doc(db, 'equipment', itemId);
   try {
@@ -64,7 +64,7 @@ export const updateEquipmentItem = async (equipmentId: string, newData: Omit<Equ
     // ניצור אובייקט נקי לעדכון
     const dataToUpdate: any = { ...newData };
     if (newData.status !== 'loaned') {
-        dataToUpdate.loanedToUserId = null;
+      dataToUpdate.loanedToUserId = null;
     }
 
     await updateDoc(itemRef, dataToUpdate);
@@ -239,9 +239,9 @@ export const deleteWarehouseAndContents = async (warehouse: Warehouse, equipment
   }
 
   console.log(`מתחיל מחיקת מחסן ${warehouse.id} וכל תכולתו...`);
-  
+
   const itemsToDelete = equipment.filter(item => item.warehouseId === warehouse.id);
-  
+
   // השתמש ב-Batch Write למחיקה יעילה
   const batch = writeBatch(db);
 
@@ -258,7 +258,7 @@ export const deleteWarehouseAndContents = async (warehouse: Warehouse, equipment
 
     // 3. בצע את כל פעולות המחיקה בבת אחת
     await batch.commit();
-    
+
     console.log("מחיקה מקומית הושלמה.");
     return true;
 
@@ -290,7 +290,7 @@ export const validateEquipmentItem = async (itemId: string) => {
  * משנה את הסטטוס שלהם ל-'loaned' ומשייך אותם לאחראי הפעילות.
  */
 export const checkoutActivityEquipment = async (
-  activity: Activity, 
+  activity: Activity,
   itemsToCheckout: EquipmentItem[]
 ) => {
   console.log(`מבצע Check-out עבור פעילות: ${activity.name}`);
@@ -303,7 +303,7 @@ export const checkoutActivityEquipment = async (
       const itemRef = doc(db, 'equipment', item.id);
       batch.update(itemRef, {
         status: 'loaned',
-        loanedToUserId: managerId 
+        loanedToUserId: managerId
       });
     }
   });
@@ -367,6 +367,31 @@ export const removeItemFromActivity = async (activityId: string, itemId: string)
   } catch (error) {
     console.error("שגיאה בהסרת פריט מפעילות:", error);
     alert("שגיאה בהסרת הפריט.");
+    return false;
+  }
+};
+
+/**
+ * מעדכן קטגוריה למספר פריטים במקביל
+ */
+export const bulkUpdateCategory = async (itemIds: string[], newCategory: string | null) => {
+  if (!itemIds.length) return false;
+
+  console.log(`מבצע עדכון קטגוריה ל-${itemIds.length} פריטים...`);
+  const batch = writeBatch(db);
+
+  itemIds.forEach(id => {
+    const ref = doc(db, 'equipment', id);
+    batch.update(ref, { category: newCategory });
+  });
+
+  try {
+    await batch.commit();
+    console.log("עדכון קטגוריה קבוצתי הושלם.");
+    return true;
+  } catch (error) {
+    console.error("שגיאה בעדכון קטגוריה קבוצתי:", error);
+    alert("שגיאה בעדכון הקטגוריות.");
     return false;
   }
 };

@@ -4,7 +4,10 @@ import './EquipmentItemRow.css';
 
 interface EquipmentItemRowProps {
   item: EquipmentItem;
-  onClick: () => void; // 1. הוספנו Prop חדש
+  onClick: () => void;
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onToggle?: () => void;
 }
 
 // ... (קבועי statusMap נשארים זהים)
@@ -16,9 +19,9 @@ const statusMap = {
   'loaned': { text: 'הושאל', class: 'status-loaned' }
 };
 
-const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick }) => { // 2. קיבלנו את onClick
-  const { users } = useDatabase(); 
-  
+const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle }) => { // 2. קיבלנו את onClick
+  const { users } = useDatabase();
+
   const manager = users.find(u => u.uid === item.managerUserId);
   const loanedToUser = users.find(u => u.uid === item.loanedToUserId);
 
@@ -30,21 +33,39 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick }) =>
   if (item.status === 'loaned') {
     secondaryInfo = `הושאל ל: ${loanedToUser?.displayName || '...'} • עד: 29/10/25`;
   }
-  
+
   const statusInfo = statusMap[item.status] || { text: 'לא ידוע', class: 'status-grey' };
 
   return (
     // 3. הוספנו את onClick ל-div החיצוני
-    <div className="equipment-item-content" onClick={onClick}> 
-      <div className="equipment-details">
-        <div className="equipment-name">{item.name}</div>
-        <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
-          {secondaryInfo}
+    <div className="equipment-item-content" onClick={isSelectable ? undefined : onClick} style={{ display: 'flex', alignItems: 'center' }}>
+      {isSelectable && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onToggle) onToggle();
+          }}
+          style={{ paddingLeft: '12px', cursor: 'pointer', display: 'flex' }}
+        >
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => { }} // handled by div onClick
+            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+          />
         </div>
-      </div>
-      <div className={`equipment-status ${statusInfo.class}`}>
-        <span className="status-dot"></span>
-        <span>{statusInfo.text}</span>
+      )}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={isSelectable && onToggle ? onToggle : undefined}>
+        <div className="equipment-details">
+          <div className="equipment-name">{item.name}</div>
+          <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
+            {secondaryInfo}
+          </div>
+        </div>
+        <div className={`equipment-status ${statusInfo.class}`}>
+          <span className="status-dot"></span>
+          <span>{statusInfo.text}</span>
+        </div>
       </div>
     </div>
   );
