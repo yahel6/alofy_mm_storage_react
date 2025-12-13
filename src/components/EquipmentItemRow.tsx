@@ -17,7 +17,7 @@ const statusMap = {
   'charging': { text: 'בטעינה', class: 'status-charging' },
   'broken': { text: 'לא כשיר', class: 'status-broken' },
   'repair': { text: 'בתיקון', class: 'status-repair' },
-  'loaned': { text: 'הושאל', class: 'status-loaned' }
+  'loaned': { text: 'בפעילות', class: 'status-loaned' }
 };
 
 const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems }) => { // 2. קיבלנו את onClick

@@ -3,31 +3,26 @@ import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import HeaderNav from '../components/HeaderNav';
+import EquipmentItemRow from '../components/EquipmentItemRow';
 import ActivityOptionsModal from '../components/ActivityOptionsModal';
 // 1. ייבוא המודאל החדש והפונקציה החדשה
 import ResolveGapModal from '../components/ResolveGapModal';
 import StatusModal from '../components/StatusModal'; // לוודא שגם זה מיובא
-import { 
-  checkoutActivityEquipment, 
+import {
+  checkoutActivityEquipment,
   checkinActivityEquipment,
   removeItemFromActivity // ייבוא הפונקציה
 } from '../firebaseUtils';
 import type { EquipmentItem } from '../types';
 import './ActivityDetailsPage.css';
 
-const statusMap: { [key: string]: string } = {
-  'broken': 'לא כשיר',
-  'repair': 'בתיקון',
-  'loaned': 'הושאל'
-};
-
 function ActivityDetailsPage() {
   const { activityId } = useParams<{ activityId: string }>();
   const navigate = useNavigate();
   const { activities, equipment, isLoading } = useDatabase();
-  
+
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
-  
+
   // 2. הוספת State לניהול המודאלים
   const [gapItem, setGapItem] = useState<EquipmentItem | null>(null); // לפריט לטיפול בפער
   const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null); // לפריט לשינוי סטטוס
@@ -38,7 +33,7 @@ function ActivityDetailsPage() {
     if (!activity) {
       return { activity: null, finalAssignedItems: [], finalMissingItems: [] };
     }
-    
+
     const finalAssignedItems: EquipmentItem[] = [];
     const finalMissingItems: EquipmentItem[] = [];
 
@@ -48,9 +43,9 @@ function ActivityDetailsPage() {
       if (item) {
         // ב. התיקון: פריט נחשב "משויך" אם הוא פנוי, בטעינה,
         //    או אם הוא מושאל ספציפית לאחראי הפעילות הזו.
-        if (item.status === 'available' || 
-            item.status === 'charging' ||
-            (item.status === 'loaned' && item.loanedToUserId === activity.managerUserId)
+        if (item.status === 'available' ||
+          item.status === 'charging' ||
+          (item.status === 'loaned' && item.loanedToUserId === activity.managerUserId)
         ) {
           finalAssignedItems.push(item);
         } else {
@@ -65,9 +60,9 @@ function ActivityDetailsPage() {
       const item = equipment.find(e => e.id === itemId);
       if (item) {
         // הרץ את אותה לוגיקה שוב, למקרה שהסטטוס של הפריט השתנה (למשל, חזר מתיקון)
-        if (item.status === 'available' || 
-            item.status === 'charging' ||
-            (item.status === 'loaned' && item.loanedToUserId === activity.managerUserId)
+        if (item.status === 'available' ||
+          item.status === 'charging' ||
+          (item.status === 'loaned' && item.loanedToUserId === activity.managerUserId)
         ) {
           // הפריט כבר לא חסר! הצג אותו כמשויך.
           finalAssignedItems.push(item);
@@ -77,15 +72,15 @@ function ActivityDetailsPage() {
         }
       }
     });
-    
+
     return { activity, finalAssignedItems, finalMissingItems };
   }, [activityId, activities, equipment]);
 
   // ... (useMemo for isActivityCheckedOut is unchanged) ...
   const isActivityCheckedOut = useMemo(() => {
     if (!activity) return false;
-    return finalAssignedItems.some(item => 
-      item.status === 'loaned' && 
+    return finalAssignedItems.some(item =>
+      item.status === 'loaned' &&
       item.loanedToUserId === activity.managerUserId
     );
   }, [activity, finalAssignedItems]);
@@ -127,7 +122,7 @@ function ActivityDetailsPage() {
     }
     await checkinActivityEquipment(activity, itemsToCheckin);
   };
-  
+
   // --- 3. הוספת Handlers עבור המודאל החדש ---
   const handleManageGapItem = () => {
     if (gapItem) {
@@ -146,15 +141,15 @@ function ActivityDetailsPage() {
   // --- סוף הוספת Handlers ---
 
   const totalAssigned = finalAssignedItems.length;
-  const totalItems = activity.equipmentRequiredIds.length + activity.equipmentMissingIds.length; 
+  const totalItems = activity.equipmentRequiredIds.length + activity.equipmentMissingIds.length;
 
   return (
     <div>
-      <HeaderNav 
-        title={activity.name} 
+      <HeaderNav
+        title={activity.name}
         onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
       />
-      
+
       <div className="details-card">
         {/* ... (card title) ... */}
         <h3 className="card-title">
@@ -166,20 +161,13 @@ function ActivityDetailsPage() {
         <div className="equipment-scroll-pane">
           {finalMissingItems.length > 0 && (
             finalMissingItems.map(item => (
-              <div 
-                className="status-item missing" 
+              <EquipmentItemRow
                 key={item.id}
-                // 4. שינוי ה-onClick
+                item={item}
                 onClick={() => setGapItem(item)}
-              >
-                <span className="status-item-icon icon-red">&times;</span>
-                <div className="status-item-details">
-                  <div className="status-item-title">{item.name} (נדרש)</div>
-                  <div className="status-item-subtitle">
-                    סטטוס נוכחי: {statusMap[item.status] || item.status}. לחץ לטיפול...
-                  </div>
-                </div>
-              </div>
+              // Optional: Indicate visual difference for missing items via style or prop if Row supports it
+              // For now, relies on standard row. The user can see status in the row.
+              />
             ))
           )}
           {/* ... (assigned items list) ... */}
@@ -190,37 +178,33 @@ function ActivityDetailsPage() {
             </p>
           ) : (
             finalAssignedItems.map(item => (
-              <div className="status-item" key={item.id}>
-                <span className="status-item-icon icon-green">&#10003;</span>
-                <div className="status-item-details">
-                  <div className="status-item-title">{item.name}</div>
-                  <div className="status-item-subtitle">
-                    ({item.status === 'loaned' ? 'בפעילות (Check-out)' : 'כשיר, שוריין'})
-                  </div>
-                </div>
-              </div>
+              <EquipmentItemRow
+                key={item.id}
+                item={item}
+                onClick={() => setSelectedItem(item)}
+              />
             ))
           )}
         </div>
       </div>
-      
+
       {/* ... (action buttons) ... */}
       <div className="action-buttons">
         {isActivityCheckedOut ? (
-          <button 
-            type="button" 
-            className="btn btn-secondary" 
+          <button
+            type="button"
+            className="btn btn-secondary"
             onClick={handleCheckin}
           >
             בצע Check-in חזרה למחסן
           </button>
         ) : (
-          <button 
-            type="button" 
-            className="btn btn-primary" 
+          <button
+            type="button"
+            className="btn btn-primary"
             onClick={handleCheckout}
             disabled={finalAssignedItems.length === 0 || finalMissingItems.length > 0}
-            style={{ 
+            style={{
               marginTop: '12px',
               opacity: (finalAssignedItems.length === 0 || finalMissingItems.length > 0) ? 0.5 : 1
             }}
@@ -229,10 +213,10 @@ function ActivityDetailsPage() {
           </button>
         )}
       </div>
-      
+
       {/* --- 5. הוספת רינדור מותנה למודאלים --- */}
       {isOptionsModalOpen && (
-        <ActivityOptionsModal 
+        <ActivityOptionsModal
           activity={activity}
           onClose={() => setIsOptionsModalOpen(false)}
         />
@@ -250,9 +234,9 @@ function ActivityDetailsPage() {
 
       {/* מודאל לניהול סטטוס (יכול להיפתח ע"י המודאל פער) */}
       {selectedItem && (
-        <StatusModal 
+        <StatusModal
           item={selectedItem}
-          onClose={() => setSelectedItem(null)} 
+          onClose={() => setSelectedItem(null)}
         />
       )}
       {/* --- סוף הוספת רינדור --- */}

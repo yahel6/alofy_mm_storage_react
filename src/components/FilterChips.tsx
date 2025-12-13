@@ -7,7 +7,7 @@ const filters = [
   { id: 'all', label: 'הכל' },
   { id: 'validate', label: 'דורש ווידוא' },
   { id: 'broken', label: 'לא כשיר' },
-  { id: 'loaned', label: 'הושאל' },
+  { id: 'loaned', label: 'בפעילות' },
 ];
 
 // נגדיר אילו "props" הרכיב מקבל

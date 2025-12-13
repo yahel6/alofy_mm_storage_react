@@ -133,8 +133,8 @@
 .action-buttons {
     padding: 0 16px;
     margin-top: 20px;
-    /* ריפוד תחתון בטוח לכפתורים */
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    /* ריפוד תחתון בטוח וגדול יותר כדי שהכפתור לא יוסתר */
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
 }
 
 .btn {

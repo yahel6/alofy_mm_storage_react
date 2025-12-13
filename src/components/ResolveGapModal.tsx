@@ -10,9 +10,9 @@ interface ResolveGapModalProps {
   onRemoveItem: () => void; // פונקציה שתסיר את הפריט מהפעילות
 }
 
-const ResolveGapModal: React.FC<ResolveGapModalProps> = ({ 
-  item, 
-  onClose, 
+const ResolveGapModal: React.FC<ResolveGapModalProps> = ({
+  item,
+  onClose,
   onManageItem,
   onRemoveItem
 }) => {
@@ -20,7 +20,7 @@ const ResolveGapModal: React.FC<ResolveGapModalProps> = ({
   const statusMap: { [key: string]: string } = {
     'broken': 'לא כשיר',
     'repair': 'בתיקון',
-    'loaned': 'הושאל (לפעילות אחרת)'
+    'loaned': 'בפעילות (אחרת)'
   };
 
   const statusText = statusMap[item.status] || item.status;
@@ -29,26 +29,26 @@ const ResolveGapModal: React.FC<ResolveGapModalProps> = ({
     <div className="modal-overlay active" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <h4 className="modal-title">טיפול בפער: {item.name}</h4>
-        
+
         <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '16px' }}>
           הפריט במצב נוכחי: **{statusText}**
         </div>
-        
-        <button 
+
+        <button
           className="modal-button btn-edit-details"
           onClick={onManageItem}
         >
           נהל פריט (שנה סטטוס)
         </button>
 
-        <button 
+        <button
           className="modal-button btn-secondary-action"
           onClick={onRemoveItem}
         >
           הסר מהפעילות
         </button>
-        
-        <button 
+
+        <button
           className="modal-button btn-cancel"
           onClick={onClose}
         >

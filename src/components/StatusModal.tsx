@@ -4,12 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import type { EquipmentItem } from '../types';
 // 1. ייבוא הפונקציה החדשה
 import { updateEquipmentStatus, deleteEquipmentItem, validateEquipmentItem } from '../firebaseUtils';
-import './Modal.css'; 
+import './Modal.css';
 
 const statusOptions = [
   { id: 'available', label: 'כשיר', dotClass: 'available' },
   { id: 'charging', label: 'בטעינה', dotClass: 'charging' },
-  { id: 'loaned', label: 'הושאל', dotClass: 'loaned' },
+  { id: 'loaned', label: 'בפעילות', dotClass: 'loaned' },
   { id: 'repair', label: 'בתיקון', dotClass: 'repair' },
   { id: 'broken', label: 'לא כשיר', dotClass: 'broken' },
 ] as const;
@@ -20,7 +20,7 @@ interface StatusModalProps {
 }
 
 const StatusModal: React.FC<StatusModalProps> = ({ item, onClose }) => {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   const handleStatusChange = (statusId: EquipmentItem['status']) => {
     updateEquipmentStatus(item.id, statusId);
@@ -48,7 +48,7 @@ const StatusModal: React.FC<StatusModalProps> = ({ item, onClose }) => {
     <div className="modal-overlay active" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <h4 className="modal-title">שנה סטטוס עבור: {item.name}</h4>
-        
+
         <div className="modal-options">
           {statusOptions.map(opt => (
             <div key={opt.id} onClick={() => handleStatusChange(opt.id)}>
@@ -59,28 +59,28 @@ const StatusModal: React.FC<StatusModalProps> = ({ item, onClose }) => {
 
         {/* 3. הוספת הכפתור החדש */}
         {/* הוא יופיע בין "מחק" ל-"ערוך" */}
-        <button 
+        <button
           className="modal-button btn-validate"
           onClick={handleValidate}
         >
           בצע ווידוא
         </button>
 
-        <button 
+        <button
           className="modal-button btn-danger"
           onClick={handleDelete}
         >
           מחק פריט
         </button>
-        
-        <button 
+
+        <button
           className="modal-button btn-edit-details"
           onClick={handleEdit}
         >
           ערוך פרטים
         </button>
-        
-        <button 
+
+        <button
           className="modal-button btn-cancel"
           onClick={onClose}
         >

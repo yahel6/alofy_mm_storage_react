@@ -410,3 +410,97 @@ export const updateUserProfile = async (uid: string, displayName: string) => {
     return false;
   }
 };
+
+/**
+ * ביצוע ווידוא תקינות למספר פריטים
+ */
+export const bulkValidateItems = async (itemIds: string[]) => {
+  if (!itemIds.length) return false;
+  const today = new Date().toISOString().split('T')[0];
+  const batch = writeBatch(db);
+
+  itemIds.forEach(id => {
+    const ref = doc(db, 'equipment', id);
+    batch.update(ref, { lastCheckDate: today });
+  });
+
+  try {
+    await batch.commit();
+    console.log("ווידוא קבוצתי הושלם.");
+    return true;
+  } catch (error) {
+    console.error("error bulk validate:", error);
+    return false;
+  }
+};
+
+/**
+ * עדכון סטטוס למספר פריטים
+ */
+export const bulkUpdateStatus = async (itemIds: string[], newStatus: EquipmentStatus) => {
+  if (!itemIds.length) return false;
+  const batch = writeBatch(db);
+
+  itemIds.forEach(id => {
+    const ref = doc(db, 'equipment', id);
+    batch.update(ref, { status: newStatus });
+  });
+
+  try {
+    await batch.commit();
+    console.log("עדכון סטטוס קבוצתי הושלם.");
+    return true;
+  } catch (error) {
+    console.error("error bulk status:", error);
+    return false;
+  }
+};
+
+/**
+ * העברת פריטים למחסן אחר
+ */
+export const bulkMoveItemsToWarehouse = async (itemIds: string[], targetWarehouseId: string) => {
+  if (!itemIds.length) return false;
+  const batch = writeBatch(db);
+
+  itemIds.forEach(id => {
+    const ref = doc(db, 'equipment', id);
+    batch.update(ref, { warehouseId: targetWarehouseId });
+  });
+
+  try {
+    await batch.commit();
+    console.log("העברת פריטים הושלמה.");
+    return true;
+  } catch (error) {
+    console.error("error bulk move:", error);
+    return false;
+  }
+};
+
+/**
+ * שיוך פריטים לפעילות
+ */
+export const bulkAssignItemsToActivity = async (itemIds: string[], targetActivityId: string) => {
+  if (!itemIds.length) return false;
+  const activityRef = doc(db, 'activities', targetActivityId);
+
+  try {
+    const snap = await getDoc(activityRef);
+    if (!snap.exists()) return false;
+
+    const currentData = snap.data();
+    const currentRequired = currentData.equipmentRequiredIds || [];
+
+    // מיזוג ללא כפילויות
+    const newSet = new Set([...currentRequired, ...itemIds]);
+    const updatedList = Array.from(newSet);
+
+    await updateDoc(activityRef, { equipmentRequiredIds: updatedList });
+    console.log("שיוך פריטים לפעילות הושלם.");
+    return true;
+  } catch (error) {
+    console.error("error bulk assign activity:", error);
+    return false;
+  }
+};
