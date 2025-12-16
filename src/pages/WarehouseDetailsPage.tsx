@@ -35,6 +35,12 @@ function WarehouseDetailsPage() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
+  // Grouping State
+  const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
+
+  // Compact Mode State
+  const [isCompactMode, setIsCompactMode] = useState(false);
+
   // Bulk Action Modals State
   const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'activity' | 'category' | null>(null);
   const [tempSelection, setTempSelection] = useState<string>(''); // For storing the selected Status/WarehouseId/ActivityId
@@ -135,6 +141,22 @@ function WarehouseDetailsPage() {
     }
     return items;
   }, [equipment, users, warehouseId, activeFilter, categoryFilter, searchQuery]);
+
+  // Group items by category if enabled
+  const groupedItems = useMemo(() => {
+    if (!isGroupedByCategory) return null;
+
+    const groups: { [key: string]: EquipmentItem[] } = {};
+    filteredItems.forEach(item => {
+      const cat = item.category || 'ללא קטגוריה';
+      if (!groups[cat]) {
+        groups[cat] = [];
+      }
+      groups[cat].push(item);
+    });
+
+    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredItems, isGroupedByCategory]);
 
   if (isLoading) {
     return <div>טוען פרטי מחסן...</div>;
@@ -256,6 +278,36 @@ function WarehouseDetailsPage() {
         )}
 
         <button
+          onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
+          style={{
+            padding: '10px 16px',
+            borderRadius: '8px',
+            border: isGroupedByCategory ? '2px solid var(--action-color)' : '1px solid #444',
+            background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
+            color: isGroupedByCategory ? 'var(--action-color)' : 'var(--text-primary)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
+        </button>
+
+        <button
+          onClick={() => setIsCompactMode(!isCompactMode)}
+          style={{
+            padding: '10px 16px',
+            borderRadius: '8px',
+            border: isCompactMode ? '2px solid var(--action-color)' : '1px solid #444',
+            background: isCompactMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
+            color: isCompactMode ? 'var(--action-color)' : 'var(--text-primary)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {isCompactMode ? 'תצוגה רחבה' : 'תצוגה דחוסה'}
+        </button>
+
+        <button
           onClick={toggleSelectionMode}
           style={{
             padding: '10px 16px',
@@ -263,10 +315,11 @@ function WarehouseDetailsPage() {
             border: isSelectionMode ? '2px solid var(--action-color)' : '1px solid #444',
             background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
             color: isSelectionMode ? 'var(--action-color)' : 'var(--text-primary)',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
           }}
         >
-          {isSelectionMode ? 'בטל בחירה' : 'בחר פריטים'}
+          {isSelectionMode ? 'בטל בחירה' : 'בחר'}
         </button>
       </div>
 
@@ -314,17 +367,51 @@ function WarehouseDetailsPage() {
             {activeFilter === 'all' ? 'אין פריטים במחסן זה.' : 'לא נמצאו פריטים שתואמים לפילטר.'}
           </p>
         ) : (
-          filteredItems.map(item => (
-            <EquipmentItemRow
-              key={item.id}
-              item={item}
-              onClick={() => setSelectedItem(item)}
-              isSelectable={isSelectionMode}
-              isSelected={selectedItemIds.has(item.id)}
-              onToggle={() => toggleItemSelection(item.id)}
-              onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
-            />
-          ))
+          isGroupedByCategory && groupedItems ? (
+            groupedItems.map(([categoryName, items]) => (
+              <div key={categoryName} style={{ marginBottom: '24px' }}>
+                <h3 style={{
+                  padding: '0 16px',
+                  margin: '0 0 8px 0',
+                  color: 'var(--action-color)',
+                  fontSize: '18px',
+                  background: 'var(--bg-secondary)',
+                  paddingTop: '8px',
+                  paddingBottom: '8px',
+                  position: 'sticky',
+                  top: '0',
+                  zIndex: 10
+                }}>
+                  {categoryName} ({items.length})
+                </h3>
+                {items.map(item => (
+                  <EquipmentItemRow
+                    key={item.id}
+                    item={item}
+                    onClick={() => setSelectedItem(item)}
+                    isSelectable={isSelectionMode}
+                    isSelected={selectedItemIds.has(item.id)}
+                    onToggle={() => toggleItemSelection(item.id)}
+                    onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
+                    isCompact={isCompactMode}
+                  />
+                ))}
+              </div>
+            ))
+          ) : (
+            filteredItems.map(item => (
+              <EquipmentItemRow
+                key={item.id}
+                item={item}
+                onClick={() => setSelectedItem(item)}
+                isSelectable={isSelectionMode}
+                isSelected={selectedItemIds.has(item.id)}
+                onToggle={() => toggleItemSelection(item.id)}
+                onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
+                isCompact={isCompactMode}
+              />
+            ))
+          )
         )}
       </div>
 

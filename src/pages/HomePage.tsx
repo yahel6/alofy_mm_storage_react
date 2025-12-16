@@ -43,8 +43,10 @@ function HomePage() {
       if (item.status === 'repair') repair++;
       if (item.status === 'loaned') loaned++;
 
-      // ספירת ווידוא
-      if (new Date(item.lastCheckDate) < validateThreshold && item.status === 'available') {
+      // ספירת ווידוא (רק פריטים שהמשתמש אחראי עליהם)
+      if (new Date(item.lastCheckDate) < validateThreshold &&
+        item.status === 'available' &&
+        item.managerUserId === currentUser?.uid) {
         needsValidation++;
       }
     });

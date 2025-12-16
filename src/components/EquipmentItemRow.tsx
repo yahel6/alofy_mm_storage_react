@@ -9,6 +9,7 @@ interface EquipmentItemRowProps {
   isSelected?: boolean;
   onToggle?: () => void;
   onOpenSubItems?: (item: EquipmentItem) => void;
+  isCompact?: boolean;
 }
 
 // ... (קבועי statusMap נשארים זהים)
@@ -20,7 +21,7 @@ const statusMap = {
   'loaned': { text: 'בפעילות', class: 'status-loaned' }
 };
 
-const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems }) => { // 2. קיבלנו את onClick
+const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems, isCompact }) => { // 2. קיבלנו את onClick
   const { users } = useDatabase();
 
   const manager = users.find(u => u.uid === item.managerUserId);
@@ -39,7 +40,7 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
 
   return (
     // 3. הוספנו את onClick ל-div החיצוני
-    <div className="equipment-item-content" onClick={isSelectable ? undefined : onClick} style={{ display: 'flex', alignItems: 'center' }}>
+    <div className={`equipment-item-content ${isCompact ? 'compact' : ''}`} onClick={isSelectable ? undefined : onClick} style={{ display: 'flex', alignItems: 'center' }}>
       {isSelectable && (
         <div
           onClick={(e) => {
@@ -87,9 +88,11 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
               </button>
             )}
           </div>
-          <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
-            {secondaryInfo}
-          </div>
+          {!isCompact && (
+            <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
+              {secondaryInfo}
+            </div>
+          )}
         </div>
         <div className={`equipment-status ${statusInfo.class}`}>
           <span className="status-dot"></span>

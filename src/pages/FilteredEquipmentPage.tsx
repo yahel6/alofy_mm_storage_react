@@ -44,7 +44,7 @@ const filterMap: { [key: string]: FilterConfig } = {
 
 function FilteredEquipmentPage() {
   const { filterType } = useParams<{ filterType: string }>();
-  const { equipment, isLoading } = useDatabase();
+  const { equipment, isLoading, currentUser } = useDatabase();
   const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null);
 
   const filterConfig = filterMap[filterType || ''] || { title: 'פריטים מסוננים', type: 'status', statuses: [] };
@@ -55,21 +55,26 @@ function FilteredEquipmentPage() {
       // סינון לפי סטטוס (כמו קודם)
       return equipment.filter(item => filterConfig.statuses!.includes(item.status));
     }
-    
+
     if (filterConfig.type === 'date' && filterConfig.dateThreshold) {
       // סינון לפי תאריך
       const today = new Date();
       // הגדר את סף התאריך (לפני X ימים)
       const thresholdDate = new Date(today.setDate(today.getDate() - filterConfig.dateThreshold));
-      
+
       return equipment.filter(item => {
         const itemDate = new Date(item.lastCheckDate);
-        return (itemDate < thresholdDate && item.status === 'available'); // החזר פריטים *שלפני* תאריך הסף
+        // סינון לפי תאריך, סטטוס, והאם המשתמש המחובר הוא האחראי
+        return (
+          itemDate < thresholdDate &&
+          item.status === 'available' &&
+          item.managerUserId === currentUser?.uid
+        );
       });
     }
 
     return []; // אם אין הגדרת סינון תקינה
-  }, [equipment, filterConfig]); 
+  }, [equipment, filterConfig, currentUser]);
   // --- סוף העדכון ---
 
   if (isLoading) {
@@ -79,7 +84,7 @@ function FilteredEquipmentPage() {
   return (
     <div>
       <HeaderNav title={filterConfig.title} />
-      
+
       <div className="equipment-list-container">
         {filteredItems.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>
@@ -87,10 +92,10 @@ function FilteredEquipmentPage() {
           </p>
         ) : (
           filteredItems.map(item => (
-            <EquipmentItemRow 
-              key={item.id} 
+            <EquipmentItemRow
+              key={item.id}
               item={item}
-              onClick={() => setSelectedItem(item)} 
+              onClick={() => setSelectedItem(item)}
             />
           ))
         )}
@@ -98,9 +103,9 @@ function FilteredEquipmentPage() {
 
       {/* רינדור מודאל הסטטוס */}
       {selectedItem && (
-        <StatusModal 
+        <StatusModal
           item={selectedItem}
-          onClose={() => setSelectedItem(null)} 
+          onClose={() => setSelectedItem(null)}
         />
       )}
     </div>
