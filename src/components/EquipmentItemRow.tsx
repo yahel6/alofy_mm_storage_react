@@ -9,10 +9,8 @@ interface EquipmentItemRowProps {
   isSelected?: boolean;
   onToggle?: () => void;
   onOpenSubItems?: (item: EquipmentItem) => void;
-  isCompact?: boolean;
 }
 
-// ... (קבועי statusMap נשארים זהים)
 const statusMap = {
   'available': { text: 'כשיר', class: 'status-available' },
   'charging': { text: 'בטעינה', class: 'status-charging' },
@@ -21,7 +19,7 @@ const statusMap = {
   'loaned': { text: 'בפעילות', class: 'status-loaned' }
 };
 
-const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems, isCompact }) => { // 2. קיבלנו את onClick
+const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems }) => {
   const { users } = useDatabase();
 
   const manager = users.find(u => u.uid === item.managerUserId);
@@ -39,8 +37,7 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
   const statusInfo = statusMap[item.status] || { text: 'לא ידוע', class: 'status-grey' };
 
   return (
-    // 3. הוספנו את onClick ל-div החיצוני
-    <div className={`equipment-item-content ${isCompact ? 'compact' : ''}`} onClick={isSelectable ? undefined : onClick} style={{ display: 'flex', alignItems: 'center' }}>
+    <div className="equipment-item-content" onClick={isSelectable ? undefined : onClick} style={{ display: 'flex', alignItems: 'center' }}>
       {isSelectable && (
         <div
           onClick={(e) => {
@@ -52,7 +49,7 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={() => { }} // handled by div onClick
+            onChange={() => { }}
             style={{ width: '20px', height: '20px', cursor: 'pointer' }}
           />
         </div>
@@ -87,12 +84,18 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
                 רשימת ציוד ({item.subItems.length})
               </button>
             )}
+
+            {/* Validation Warning */}
+            {item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) && (
+              <div className="validation-warning" title="נדרש ווידוא (לא נבדק ב-7 ימים האחרונים)">
+                ⚠️
+                <span className="warning-text">דורש וידוא</span>
+              </div>
+            )}
           </div>
-          {!isCompact && (
-            <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
-              {secondaryInfo}
-            </div>
-          )}
+          <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
+            {secondaryInfo}
+          </div>
         </div>
         <div className={`equipment-status ${statusInfo.class}`}>
           <span className="status-dot"></span>

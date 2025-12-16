@@ -26,7 +26,6 @@ function ActivityDetailsPage() {
   // 2. הוספת State לניהול המודאלים
   const [gapItem, setGapItem] = useState<EquipmentItem | null>(null); // לפריט לטיפול בפער
   const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null); // לפריט לשינוי סטטוס
-  const [isCompactMode, setIsCompactMode] = useState(false);
 
   // ... (useMemo for activity, finalAssignedItems, finalMissingItems is unchanged) ...
   const { activity, finalAssignedItems, finalMissingItems } = useMemo(() => {
@@ -155,18 +154,9 @@ function ActivityDetailsPage() {
         {/* ... (card title) ... */}
         <h3 className="card-title">
           <span>{`סטטוס פעילות (${totalAssigned}/${totalItems})`}</span>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <span
-              className="card-title-action"
-              onClick={() => setIsCompactMode(!isCompactMode)}
-              style={{ fontSize: '14px', color: '#888' }}
-            >
-              {isCompactMode ? 'הרחב' : 'צמצם'}
-            </span>
-            <span className="card-title-action" onClick={handleEditEquipment}>
-              ערוך
-            </span>
-          </div>
+          <span className="card-title-action" onClick={handleEditEquipment}>
+            ערוך
+          </span>
         </h3>
         <div className="equipment-scroll-pane">
           {finalMissingItems.length > 0 && (
@@ -175,7 +165,6 @@ function ActivityDetailsPage() {
                 key={item.id}
                 item={item}
                 onClick={() => setGapItem(item)}
-                isCompact={isCompactMode}
               // Optional: Indicate visual difference for missing items via style or prop if Row supports it
               // For now, relies on standard row. The user can see status in the row.
               />
@@ -193,7 +182,6 @@ function ActivityDetailsPage() {
                 key={item.id}
                 item={item}
                 onClick={() => setSelectedItem(item)}
-                isCompact={isCompactMode}
               />
             ))
           )}

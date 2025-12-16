@@ -5,7 +5,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 16px;
+    padding: 2px 8px;
+    /* Extreme compact padding */
+    min-height: 36px;
+    /* Reduced min-height */
+    /* Ensure clickability */
     cursor: pointer;
     transition: background-color 0.2s;
     border-bottom: 1px solid #3a3a3a;
@@ -18,29 +22,140 @@
 .equipment-details {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0px;
 }
 
 .equipment-name {
-    font-size: 16px;
+    font-size: 13px;
+    /* Slightly smaller font */
     font-weight: 500;
     color: var(--text-primary);
+    line-height: 1.2;
 }
 
 .equipment-secondary-info {
-    font-size: 13px;
+    font-size: 10px;
+    /* Smallest readable size */
     color: var(--text-secondary);
+    line-height: 1.1;
 }
 
 .equipment-status {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 1px 4px;
+    /* Tighter padding */
+    border-radius: 4px;
+    margin-right: 4px;
+    /* מותאם ל-RTL */
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.validation-warning {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--status-red);
+    font-size: 12px;
+    background: rgba(255, 59, 48, 0.1);
+    padding: 0px 4px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.warning-text {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+
+/* צבעי סטטוס */
+
+.equipment-status.status-available {
+    color: var(--status-green);
+    background-color: rgba(52, 199, 89, 0.1);
+}
+
+.equipment-status.status-available .status-dot {
+    background-color: var(--status-green);
+}
+
+.equipment-status.status-charging {
+    color: var(--status-orange);
+    background-color: rgba(255, 149, 0, 0.1);
+}
+
+.equipment-status.status-charging .status-dot {
+    background-color: var(--status-orange);
+}
+
+.equipment-status.status-broken {
+    color: var(--status-red);
+    background-color: rgba(255, 59, 48, 0.1);
+}
+
+.equipment-status.status-broken .status-dot {
+    background-color: var(--status-red);
+}
+
+.equipment-status.status-repair {
+    color: var(--status-orange);
+    background-color: rgba(255, 149, 0, 0.1);
+}
+
+.equipment-status.status-repair .status-dot {
+    background-color: var(--status-orange);
+}
+
+.equipment-status.status-loaned {
+    color: var(--status-grey);
+    background-color: rgba(142, 142, 147, 0.1);
+}
+
+.equipment-status.status-loaned .status-dot {
+    background-color: var(--status-grey);
+}
+
+.equipment-item-content:hover {
+    background-color: #333;
+}
+
+.equipment-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+}
+
+.equipment-name {
     font-size: 14px;
     font-weight: 500;
-    padding: 4px 8px;
-    border-radius: 6px;
-    margin-right: 10px;
+    color: var(--text-primary);
+}
+
+.equipment-secondary-info {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.2;
+}
+
+.equipment-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
     /* מותאם ל-RTL */
 }
 
@@ -49,6 +164,23 @@
     height: 8px;
     border-radius: 50%;
     display: inline-block;
+}
+
+.validation-warning {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--status-red);
+    font-size: 14px;
+    background: rgba(255, 59, 48, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.warning-text {
+    font-size: 12px;
+    font-weight: 600;
 }
 
 

@@ -38,9 +38,6 @@ function WarehouseDetailsPage() {
   // Grouping State
   const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
 
-  // Compact Mode State
-  const [isCompactMode, setIsCompactMode] = useState(false);
-
   // Bulk Action Modals State
   const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'activity' | 'category' | null>(null);
   const [tempSelection, setTempSelection] = useState<string>(''); // For storing the selected Status/WarehouseId/ActivityId
@@ -293,21 +290,6 @@ function WarehouseDetailsPage() {
         </button>
 
         <button
-          onClick={() => setIsCompactMode(!isCompactMode)}
-          style={{
-            padding: '10px 16px',
-            borderRadius: '8px',
-            border: isCompactMode ? '2px solid var(--action-color)' : '1px solid #444',
-            background: isCompactMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
-            color: isCompactMode ? 'var(--action-color)' : 'var(--text-primary)',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {isCompactMode ? 'תצוגה רחבה' : 'תצוגה דחוסה'}
-        </button>
-
-        <button
           onClick={toggleSelectionMode}
           style={{
             padding: '10px 16px',
@@ -393,7 +375,6 @@ function WarehouseDetailsPage() {
                     isSelected={selectedItemIds.has(item.id)}
                     onToggle={() => toggleItemSelection(item.id)}
                     onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
-                    isCompact={isCompactMode}
                   />
                 ))}
               </div>
@@ -408,7 +389,6 @@ function WarehouseDetailsPage() {
                 isSelected={selectedItemIds.has(item.id)}
                 onToggle={() => toggleItemSelection(item.id)}
                 onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
-                isCompact={isCompactMode}
               />
             ))
           )
