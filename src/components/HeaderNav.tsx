@@ -12,15 +12,19 @@ const OptionsIcon = () => (
 
 interface HeaderNavProps {
   title: string;
-  // 2. החלפנו את 'rightSlot' ב-prop ספציפי
   onOptionsMenuClick?: () => void;
+  onBack?: () => void; // Optional onBack handler
 }
 
-const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick }) => {
+const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick, onBack }) => {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    navigate(-1);
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(-1);
+    }
   };
 
   return (

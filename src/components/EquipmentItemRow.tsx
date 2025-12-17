@@ -84,22 +84,25 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
                 רשימת ציוד ({item.subItems.length})
               </button>
             )}
-
-            {/* Validation Warning */}
-            {item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) && (
-              <div className="validation-warning" title="נדרש ווידוא (לא נבדק ב-7 ימים האחרונים)">
-                ⚠️
-                <span className="warning-text">דורש וידוא</span>
-              </div>
-            )}
           </div>
           <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
             {secondaryInfo}
           </div>
         </div>
-        <div className={`equipment-status ${statusInfo.class}`}>
-          <span className="status-dot"></span>
-          <span>{statusInfo.text}</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {/* Validation Warning */}
+          {item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) && (
+            <div className="validation-warning" title="נדרש ווידוא (לא נבדק ב-7 ימים האחרונים)">
+              ⚠️
+              <span className="warning-text">דורש וידוא</span>
+            </div>
+          )}
+
+          <div className={`equipment-status ${statusInfo.class}`}>
+            <span className="status-dot"></span>
+            <span>{statusInfo.text}</span>
+          </div>
         </div>
       </div>
     </div>
