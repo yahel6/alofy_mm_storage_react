@@ -6,7 +6,7 @@ import Fab from './components/Fab.tsx';
 import QuickAddModal from './components/QuickAddModal.tsx';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 
-import './App.css'; 
+import './App.css';
 
 // 3. הגדרת האנימציה - *** גרסה מהירה וחלקה ***
 const pageAnimation: Variants = {
@@ -17,8 +17,8 @@ const pageAnimation: Variants = {
   in: {
     opacity: 1,
     x: 0, // החלק למרכז
-    transition: { 
-      type: "tween", 
+    transition: {
+      type: "tween",
       ease: "easeOut", // תנועה חלקה (מתחיל מהר, מאט בסוף)
       duration: 0.1 // משך זמן קצר
     }
@@ -26,8 +26,8 @@ const pageAnimation: Variants = {
   out: {
     opacity: 0,
     x: "-100vw", // החלק החוצה שמאלה
-    transition: { 
-      type: "tween", 
+    transition: {
+      type: "tween",
       ease: "easeIn", // תנועה חלקה (מתחיל לאט, מאיץ החוצה)
       duration: 0.05 // משך זמן קצר מאוד
     }
@@ -37,19 +37,28 @@ const pageAnimation: Variants = {
 
 function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const location = useLocation(); 
+  const location = useLocation();
 
   return (
     <div className="app-container">
       <main className="page-content">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
-            key={location.pathname} 
+            key={location.pathname}
             variants={pageAnimation}
             initial="initial"
             animate="in"
             exit="out"
-            style={{ position: 'absolute', width: '100%', top: 0, left: 0 }}
+            style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: '120px', // Space for Bottom Nav
+              top: 0,
+              left: 0
+            }}
           >
             <Outlet />
           </motion.div>
@@ -59,9 +68,9 @@ function App() {
       <BottomNav />
 
       <Fab onClick={() => setIsAddModalOpen(true)} />
-      <QuickAddModal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
+      <QuickAddModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
       />
     </div>
   );

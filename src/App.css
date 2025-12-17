@@ -27,15 +27,9 @@
 
 .page-content {
     flex-grow: 1;
-    /* <-- זו השורה הקריטית שפותרת את הבעיה */
     position: relative;
-    /* חובה עבור האנימציות */
-    overflow-y: auto;
-    /* מאפשר גלילה פנימית בעמוד */
-    overflow-x: hidden;
-    /* מונע גלילה אופקית */
-    padding-bottom: 120px;
-    /* ריפוד תחתון כדי שהניווט לא יסתיר תוכן */
+    overflow: hidden;
+    /* Static container, pages handle scroll */
 }
 
 

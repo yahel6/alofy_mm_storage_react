@@ -7,6 +7,9 @@ import App from './App.tsx'
 import LoginPage from './pages/LoginPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import { DatabaseProvider } from './contexts/DatabaseContext.tsx';
+import { ValidationProvider } from './contexts/ValidationContext.tsx'; // Import moved here
+
+// ... (rest of imports)
 
 // ייבוא כל העמודים שהאפליקציה צריכה
 import HomePage from './pages/HomePage.tsx';
@@ -33,7 +36,9 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <DatabaseProvider>
-          <App />
+          <ValidationProvider>
+            <App />
+          </ValidationProvider>
         </DatabaseProvider>
       </ProtectedRoute>
     ),

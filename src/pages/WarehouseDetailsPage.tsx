@@ -2,12 +2,14 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useValidation } from '../contexts/ValidationContext';
 import HeaderNav from '../components/HeaderNav';
 import EquipmentItemRow from '../components/EquipmentItemRow';
 import FilterChips from '../components/FilterChips';
 import StatusModal from '../components/StatusModal';
 import WarehouseOptionsModal from '../components/WarehouseOptionsModal';
 import SubItemsModal from '../components/SubItemsModal';
+import ValidationModal from '../components/ValidationModal';
 import {
   bulkUpdateCategory,
   bulkValidateItems,
@@ -22,12 +24,21 @@ type FilterType = 'all' | 'validate' | 'broken' | 'loaned';
 
 function WarehouseDetailsPage() {
   const { warehouseId } = useParams<{ warehouseId: string }>();
+  // Use warehouseId as scopeId. Ensure it exists.
+  const scopeId = warehouseId || 'unknown_warehouse';
+
   const { warehouses, equipment, users, activities, isLoading } = useDatabase();
+  const { startSession, stopSession, isSessionActive, getSessionVerifiedItems } = useValidation();
+
+  const isValidationMode = isSessionActive(scopeId);
+  const sessionVerifiedIds = getSessionVerifiedItems(scopeId);
+
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
   const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null);
+  const [validationModalItem, setValidationModalItem] = useState<EquipmentItem | null>(null);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
   const [subItemsModalItem, setSubItemsModalItem] = useState<EquipmentItem | null>(null);
 
@@ -105,6 +116,11 @@ function WarehouseDetailsPage() {
   const filteredItems = useMemo(() => {
     let items = equipment.filter(item => item.warehouseId === warehouseId);
 
+    // *** Validation Mode Filter: Hide already verified items ***
+    if (isValidationMode) {
+      items = items.filter(item => !sessionVerifiedIds.has(item.id));
+    }
+
     if (activeFilter !== 'all') {
       const today = new Date();
       const validationThreshold = new Date(new Date().setDate(today.getDate() - 7));
@@ -137,7 +153,7 @@ function WarehouseDetailsPage() {
       });
     }
     return items;
-  }, [equipment, users, warehouseId, activeFilter, categoryFilter, searchQuery]);
+  }, [equipment, users, warehouseId, activeFilter, categoryFilter, searchQuery, isValidationMode, sessionVerifiedIds]);
 
   // Group items by category if enabled
   const groupedItems = useMemo(() => {
@@ -154,6 +170,14 @@ function WarehouseDetailsPage() {
 
     return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
   }, [filteredItems, isGroupedByCategory]);
+
+  const handleItemClick = (item: EquipmentItem) => {
+    if (isValidationMode) {
+      setValidationModalItem(item);
+    } else {
+      setSelectedItem(item);
+    }
+  };
 
   if (isLoading) {
     return <div>טוען פרטי מחסן...</div>;
@@ -229,13 +253,44 @@ function WarehouseDetailsPage() {
   };
 
   return (
-    <div>
+    <div style={{ paddingBottom: isSelectionMode ? '140px' : '60px' }}>
       <HeaderNav
         title={warehouse.name}
         onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
       />
 
-      <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />
+      {/* Validation Mode Banner */}
+      {isValidationMode && (
+        <div style={{
+          background: 'rgba(52, 199, 89, 0.2)',
+          color: '#4caf50',
+          padding: '12px',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          borderBottom: '1px solid rgba(52, 199, 89, 0.4)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span>🕵️ מצב ווידוא פעיל</span>
+          <button
+            onClick={() => stopSession(scopeId)}
+            style={{
+              background: 'rgba(0,0,0,0.3)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '4px 12px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+          >
+            סיים
+          </button>
+        </div>
+      )}
+
+      {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
 
       <div style={{ padding: '0 16px 16px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
         <input
@@ -291,18 +346,39 @@ function WarehouseDetailsPage() {
 
         <button
           onClick={toggleSelectionMode}
+          // Hide selection button in validation mode to avoid conflict? Or allow both?
+          // Let's hide it in validation mode for simplicity as requested "only press Verify".
+          disabled={isValidationMode}
           style={{
             padding: '10px 16px',
             borderRadius: '8px',
             border: isSelectionMode ? '2px solid var(--action-color)' : '1px solid #444',
             background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
             color: isSelectionMode ? 'var(--action-color)' : 'var(--text-primary)',
-            cursor: 'pointer',
+            cursor: isValidationMode ? 'not-allowed' : 'pointer',
+            opacity: isValidationMode ? 0.3 : 1,
             whiteSpace: 'nowrap'
           }}
         >
           {isSelectionMode ? 'בטל בחירה' : 'בחר'}
         </button>
+
+        {!isValidationMode && (
+          <button
+            onClick={() => startSession(scopeId)}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: '1px solid #444',
+              background: 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            מצב ווידוא
+          </button>
+        )}
       </div>
 
       {/* --- BULK ACTIONS TOOLBAR --- */}
@@ -343,10 +419,10 @@ function WarehouseDetailsPage() {
         }
       `}</style>
 
-      <div className="equipment-list" style={{ paddingBottom: isSelectionMode ? '140px' : '0' }}>
+      <div className="equipment-list">
         {filteredItems.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>
-            {activeFilter === 'all' ? 'אין פריטים במחסן זה.' : 'לא נמצאו פריטים שתואמים לפילטר.'}
+            {isValidationMode ? 'כל הפריטים אומתו! 🎉' : (activeFilter === 'all' ? 'אין פריטים במחסן זה.' : 'לא נמצאו פריטים שתואמים לפילטר.')}
           </p>
         ) : (
           isGroupedByCategory && groupedItems ? (
@@ -370,7 +446,7 @@ function WarehouseDetailsPage() {
                   <EquipmentItemRow
                     key={item.id}
                     item={item}
-                    onClick={() => setSelectedItem(item)}
+                    onClick={() => handleItemClick(item)}
                     isSelectable={isSelectionMode}
                     isSelected={selectedItemIds.has(item.id)}
                     onToggle={() => toggleItemSelection(item.id)}
@@ -384,7 +460,7 @@ function WarehouseDetailsPage() {
               <EquipmentItemRow
                 key={item.id}
                 item={item}
-                onClick={() => setSelectedItem(item)}
+                onClick={() => handleItemClick(item)}
                 isSelectable={isSelectionMode}
                 isSelected={selectedItemIds.has(item.id)}
                 onToggle={() => toggleItemSelection(item.id)}
@@ -399,6 +475,15 @@ function WarehouseDetailsPage() {
         <StatusModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
+        />
+      )}
+
+      {/* Validation Mode Modal */}
+      {validationModalItem && (
+        <ValidationModal
+          item={validationModalItem}
+          scopeId={scopeId}
+          onClose={() => setValidationModalItem(null)}
         />
       )}
 

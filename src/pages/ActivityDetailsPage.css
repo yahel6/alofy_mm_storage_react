@@ -45,9 +45,7 @@
 /* */
 
 .equipment-scroll-pane {
-    max-height: 450px;
-    /* הגדלנו קצת */
-    overflow-y: auto;
+    /* max-height removed to allow page scrolling */
     padding: 0 16px;
 }
 

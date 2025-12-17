@@ -2,12 +2,14 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useValidation } from '../contexts/ValidationContext';
 import HeaderNav from '../components/HeaderNav';
 import EquipmentItemRow from '../components/EquipmentItemRow';
 import ActivityOptionsModal from '../components/ActivityOptionsModal';
 // 1. ייבוא המודאל החדש והפונקציה החדשה
 import ResolveGapModal from '../components/ResolveGapModal';
 import StatusModal from '../components/StatusModal'; // לוודא שגם זה מיובא
+import ValidationModal from '../components/ValidationModal';
 import {
   checkoutActivityEquipment,
   checkinActivityEquipment,
@@ -18,14 +20,22 @@ import './ActivityDetailsPage.css';
 
 function ActivityDetailsPage() {
   const { activityId } = useParams<{ activityId: string }>();
+  const scopeId = activityId || 'unknown_activity';
+
   const navigate = useNavigate();
   const { activities, equipment, isLoading } = useDatabase();
+  const { startSession, stopSession, isSessionActive, getSessionVerifiedItems } = useValidation();
+
+  const isValidationMode = isSessionActive(scopeId);
+  const sessionVerifiedIds = getSessionVerifiedItems(scopeId);
 
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
 
   // 2. הוספת State לניהול המודאלים
   const [gapItem, setGapItem] = useState<EquipmentItem | null>(null); // לפריט לטיפול בפער
   const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null); // לפריט לשינוי סטטוס
+  const [validationModalItem, setValidationModalItem] = useState<EquipmentItem | null>(null);
+
 
   // ... (useMemo for activity, finalAssignedItems, finalMissingItems is unchanged) ...
   const { activity, finalAssignedItems, finalMissingItems } = useMemo(() => {
@@ -41,6 +51,9 @@ function ActivityDetailsPage() {
     activity.equipmentRequiredIds.forEach(itemId => {
       const item = equipment.find(e => e.id === itemId);
       if (item) {
+        // Validation Mode Check: Skip if verified
+        if (isValidationMode && sessionVerifiedIds.has(item.id)) return;
+
         // ב. התיקון: פריט נחשב "משויך" אם הוא פנוי, בטעינה,
         //    או אם הוא מושאל ספציפית לאחראי הפעילות הזו.
         if (item.status === 'available' ||
@@ -59,6 +72,9 @@ function ActivityDetailsPage() {
     activity.equipmentMissingIds.forEach(itemId => {
       const item = equipment.find(e => e.id === itemId);
       if (item) {
+        // Validation Mode Check: Skip if verified
+        if (isValidationMode && sessionVerifiedIds.has(item.id)) return;
+
         // הרץ את אותה לוגיקה שוב, למקרה שהסטטוס של הפריט השתנה (למשל, חזר מתיקון)
         if (item.status === 'available' ||
           item.status === 'charging' ||
@@ -74,7 +90,7 @@ function ActivityDetailsPage() {
     });
 
     return { activity, finalAssignedItems, finalMissingItems };
-  }, [activityId, activities, equipment]);
+  }, [activityId, activities, equipment, isValidationMode, sessionVerifiedIds]);
 
   // ... (useMemo for isActivityCheckedOut is unchanged) ...
   const isActivityCheckedOut = useMemo(() => {
@@ -138,7 +154,22 @@ function ActivityDetailsPage() {
       // אין צורך לרענן, onSnapshot יעשה זאת
     }
   };
-  // --- סוף הוספת Handlers ---
+
+  const handleItemClick = (item: EquipmentItem) => {
+    if (isValidationMode) {
+      setValidationModalItem(item);
+    } else {
+      setSelectedItem(item);
+    }
+  };
+
+  const handleGapItemClick = (item: EquipmentItem) => {
+    if (isValidationMode) {
+      setValidationModalItem(item);
+    } else {
+      setGapItem(item);
+    }
+  };
 
   const totalAssigned = finalAssignedItems.length;
   const totalItems = activity.equipmentRequiredIds.length + activity.equipmentMissingIds.length;
@@ -150,21 +181,76 @@ function ActivityDetailsPage() {
         onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
       />
 
+      {/* Validation Mode Banner */}
+      {isValidationMode && (
+        <div style={{
+          background: 'rgba(52, 199, 89, 0.2)',
+          color: '#4caf50',
+          padding: '12px',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          borderBottom: '1px solid rgba(52, 199, 89, 0.4)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span>🕵️ מצב ווידוא פעיל</span>
+          <button
+            onClick={() => stopSession(scopeId)}
+            style={{
+              background: 'rgba(0,0,0,0.3)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '4px 12px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+          >
+            סיים
+          </button>
+        </div>
+      )}
+
       <div className="details-card">
         {/* ... (card title) ... */}
         <h3 className="card-title">
           <span>{`סטטוס פעילות (${totalAssigned}/${totalItems})`}</span>
-          <span className="card-title-action" onClick={handleEditEquipment}>
-            ערוך
-          </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {!isValidationMode && (
+              <button
+                onClick={() => startSession(scopeId)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #444',
+                  color: 'var(--text-primary)',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                מצב ווידוא
+              </button>
+            )}
+            <span className="card-title-action" onClick={handleEditEquipment}>
+              ערוך
+            </span>
+          </div>
         </h3>
         <div className="equipment-scroll-pane">
+          {(finalMissingItems.length === 0 && finalAssignedItems.length === 0 && isValidationMode) && (
+            <p style={{ color: 'var(--status-green)', textAlign: 'center', padding: '20px' }}>
+              כל הפריטים בפעילות זו אומתו! 🎉
+            </p>
+          )}
+
           {finalMissingItems.length > 0 && (
             finalMissingItems.map(item => (
               <EquipmentItemRow
                 key={item.id}
                 item={item}
-                onClick={() => setGapItem(item)}
+                onClick={() => handleGapItemClick(item)}
               // Optional: Indicate visual difference for missing items via style or prop if Row supports it
               // For now, relies on standard row. The user can see status in the row.
               />
@@ -172,7 +258,7 @@ function ActivityDetailsPage() {
           )}
           {/* ... (assigned items list) ... */}
           <h4 className="pane-subtitle">ציוד כשיר ומשוריין</h4>
-          {finalAssignedItems.length === 0 ? (
+          {finalAssignedItems.length === 0 && !isValidationMode ? (
             <p style={{ color: 'var(--text-secondary)', padding: '10px 0', textAlign: 'center' }}>
               לא שוריין ציוד לפעילות זו.
             </p>
@@ -181,7 +267,7 @@ function ActivityDetailsPage() {
               <EquipmentItemRow
                 key={item.id}
                 item={item}
-                onClick={() => setSelectedItem(item)}
+                onClick={() => handleItemClick(item)}
               />
             ))
           )}
@@ -189,30 +275,32 @@ function ActivityDetailsPage() {
       </div>
 
       {/* ... (action buttons) ... */}
-      <div className="action-buttons">
-        {isActivityCheckedOut ? (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={handleCheckin}
-          >
-            בצע Check-in חזרה למחסן
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleCheckout}
-            disabled={finalAssignedItems.length === 0 || finalMissingItems.length > 0}
-            style={{
-              marginTop: '12px',
-              opacity: (finalAssignedItems.length === 0 || finalMissingItems.length > 0) ? 0.5 : 1
-            }}
-          >
-            בצע Check-out לציוד
-          </button>
-        )}
-      </div>
+      {!isValidationMode && (
+        <div className="action-buttons">
+          {isActivityCheckedOut ? (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleCheckin}
+            >
+              בצע Check-in חזרה למחסן
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleCheckout}
+              disabled={finalAssignedItems.length === 0 || finalMissingItems.length > 0}
+              style={{
+                marginTop: '12px',
+                opacity: (finalAssignedItems.length === 0 || finalMissingItems.length > 0) ? 0.5 : 1
+              }}
+            >
+              בצע Check-out לציוד
+            </button>
+          )}
+        </div>
+      )}
 
       {/* --- 5. הוספת רינדור מותנה למודאלים --- */}
       {isOptionsModalOpen && (
@@ -222,8 +310,8 @@ function ActivityDetailsPage() {
         />
       )}
 
-      {/* מודאל לטיפול בפער */}
-      {gapItem && activity && (
+      {/* ייתכן שנרצה לא לאפשר טיפול בפערים בזמן מצב ווידוא, אבל השארתי את זה פתוח ב-handleItemClick */}
+      {gapItem && activity && !isValidationMode && (
         <ResolveGapModal
           item={gapItem}
           onClose={() => setGapItem(null)}
@@ -237,6 +325,15 @@ function ActivityDetailsPage() {
         <StatusModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
+        />
+      )}
+
+      {/* Validation Mode Modal */}
+      {validationModalItem && (
+        <ValidationModal
+          item={validationModalItem}
+          scopeId={scopeId}
+          onClose={() => setValidationModalItem(null)}
         />
       )}
       {/* --- סוף הוספת רינדור --- */}
