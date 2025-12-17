@@ -28,7 +28,7 @@ function WarehouseDetailsPage() {
   const scopeId = warehouseId || 'unknown_warehouse';
 
   const { warehouses, equipment, users, activities, isLoading } = useDatabase();
-  const { startSession, stopSession, isSessionActive, getSessionVerifiedItems } = useValidation();
+  const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
 
   const isValidationMode = isSessionActive(scopeId);
   const sessionVerifiedIds = getSessionVerifiedItems(scopeId);
@@ -105,14 +105,32 @@ function WarehouseDetailsPage() {
   };
 
   const handleBulkValidate = async () => {
-    if (window.confirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`)) {
-      await bulkValidateItems(Array.from(selectedItemIds));
-      alert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
-      setIsSelectionMode(false);
-      setSelectedItemIds(new Set());
+    // Removed confirmation as requested
+
+    if (isValidationMode) {
+      // Scoped Validation Logic
+      const ids = Array.from(selectedItemIds);
+
+      // 1. Update DB (real validation)
+      await bulkValidateItems(ids);
+
+      // 2. Update Local Session (hide items)
+      ids.forEach(id => verifyItem(scopeId, id));
+
+      // Removed success alert as requested ("X items hidden")
+    } else {
+      // Standard Check (Legacy or outside mode) - just updates DB
+      if (window.confirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`)) {
+        await bulkValidateItems(Array.from(selectedItemIds));
+        alert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
+      }
     }
+
+    setIsSelectionMode(false);
+    setSelectedItemIds(new Set());
   };
 
+  // ... (filteredItems and groupedItems useMemos are unchanged) ...
   const filteredItems = useMemo(() => {
     let items = equipment.filter(item => item.warehouseId === warehouseId);
 
@@ -155,7 +173,6 @@ function WarehouseDetailsPage() {
     return items;
   }, [equipment, users, warehouseId, activeFilter, categoryFilter, searchQuery, isValidationMode, sessionVerifiedIds]);
 
-  // Group items by category if enabled
   const groupedItems = useMemo(() => {
     if (!isGroupedByCategory) return null;
 
@@ -172,6 +189,12 @@ function WarehouseDetailsPage() {
   }, [filteredItems, isGroupedByCategory]);
 
   const handleItemClick = (item: EquipmentItem) => {
+    // If selecting, toggle selection instead of opening modal
+    if (isSelectionMode) {
+      toggleItemSelection(item.id);
+      return;
+    }
+
     if (isValidationMode) {
       setValidationModalItem(item);
     } else {
@@ -183,6 +206,7 @@ function WarehouseDetailsPage() {
     return <div>טוען פרטי מחסן...</div>;
   }
 
+  // ... (warehouse check is unchanged) ...
   const warehouse = warehouses.find(w => w.id === warehouseId);
   const otherWarehouses = warehouses.filter(w => w.id !== warehouseId);
 
@@ -190,7 +214,7 @@ function WarehouseDetailsPage() {
     return <div><HeaderNav title="שגיאה" /><p style={{ textAlign: 'center' }}>מחסן לא נמצא.</p></div>;
   }
 
-  // Helper render for the action modal content
+  // ... (renderBulkActionModal is unchanged) ...
   const renderBulkActionModal = () => {
     if (!bulkAction) return null;
 
@@ -346,17 +370,13 @@ function WarehouseDetailsPage() {
 
         <button
           onClick={toggleSelectionMode}
-          // Hide selection button in validation mode to avoid conflict? Or allow both?
-          // Let's hide it in validation mode for simplicity as requested "only press Verify".
-          disabled={isValidationMode}
           style={{
             padding: '10px 16px',
             borderRadius: '8px',
             border: isSelectionMode ? '2px solid var(--action-color)' : '1px solid #444',
             background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
             color: isSelectionMode ? 'var(--action-color)' : 'var(--text-primary)',
-            cursor: isValidationMode ? 'not-allowed' : 'pointer',
-            opacity: isValidationMode ? 0.3 : 1,
+            cursor: 'pointer',
             whiteSpace: 'nowrap'
           }}
         >
@@ -397,10 +417,15 @@ function WarehouseDetailsPage() {
 
           <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
             <button className="bulk-btn" onClick={handleBulkValidate}>✅ ווידוא</button>
-            <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('status'); }}>🔄 סטטוס</button>
-            <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('category'); }}>🏷️ קטגוריה</button>
-            <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('move'); }}>📦 העברה</button>
-            <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('activity'); }}>📌 לפעילות</button>
+
+            {!isValidationMode && (
+              <>
+                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('status'); }}>🔄 סטטוס</button>
+                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('category'); }}>🏷️ קטגוריה</button>
+                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('move'); }}>📦 העברה</button>
+                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('activity'); }}>📌 לפעילות</button>
+              </>
+            )}
           </div>
         </div>
       )}
