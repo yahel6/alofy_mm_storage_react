@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useValidation } from '../contexts/ValidationContext';
+import { useSelection } from '../contexts/SelectionContext';
 import HeaderNav from '../components/HeaderNav';
 import EquipmentItemRow from '../components/EquipmentItemRow';
 import ActivityOptionsModal from '../components/ActivityOptionsModal';
@@ -25,61 +26,41 @@ function ActivityDetailsPage() {
   const navigate = useNavigate();
   const { activities, equipment, isLoading } = useDatabase();
   const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
+  const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection: globalToggleItemSelection, clearSelection } = useSelection();
 
   const isValidationMode = isSessionActive(scopeId);
   const sessionVerifiedIds = getSessionVerifiedItems(scopeId);
 
+  const isSelectionMode = isSelectionModeActive(scopeId);
+  const selectedItemIds = getSelectedItems(scopeId);
+
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
 
-  // 2. State for Modals & Selection
+  // State for Modals
   const [gapItem, setGapItem] = useState<EquipmentItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null);
   const [validationModalItem, setValidationModalItem] = useState<EquipmentItem | null>(null);
 
-  // Bulk Selection
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-
   const toggleSelectionMode = () => {
-    setIsSelectionMode(!isSelectionMode);
-    setSelectedItemIds(new Set());
+    globalToggleSelectionMode(scopeId);
   };
 
   const toggleItemSelection = (itemId: string) => {
-    setSelectedItemIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId);
-      } else {
-        newSet.add(itemId);
-      }
-      return newSet;
-    });
+    globalToggleItemSelection(scopeId, itemId);
   };
 
   const handleBulkValidate = async () => {
-    // Removed confirmation as requested
-
-    // 1. Update DB (always) - simplified flow
     const ids = Array.from(selectedItemIds);
     await bulkValidateItems(ids);
 
-    // 2. Validation Mode Logic (Hide items)
     if (isValidationMode) {
       ids.forEach(id => verifyItem(scopeId, id));
-      // Removed success alert as requested ("X items hidden")
     } else {
-      // Standard Check (Legacy) - outside validation mode we keep alert if not asked to remove?
-      // User asked to remove the 2 specific alerts.
-      // "1. Are you sure?" (removed above)
-      // "2. X items hidden" (removed above)
-      // For non-validation mode, the alert is "Items verified successfully...".
-      // I will keep the non-validation alert for feedback since items don't disappear there.
       alert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
     }
 
-    setIsSelectionMode(false);
-    setSelectedItemIds(new Set());
+    clearSelection(scopeId);
+    globalToggleSelectionMode(scopeId); // Exit mode
   };
 
   const { activity, finalAssignedItems, finalMissingItems } = useMemo(() => {

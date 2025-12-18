@@ -7,7 +7,8 @@ import App from './App.tsx'
 import LoginPage from './pages/LoginPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import { DatabaseProvider } from './contexts/DatabaseContext.tsx';
-import { ValidationProvider } from './contexts/ValidationContext.tsx'; // Import moved here
+import { ValidationProvider } from './contexts/ValidationContext.tsx';
+import { SelectionProvider } from './contexts/SelectionContext.tsx';
 
 // ... (rest of imports)
 
@@ -37,7 +38,9 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <DatabaseProvider>
           <ValidationProvider>
-            <App />
+            <SelectionProvider>
+              <App />
+            </SelectionProvider>
           </ValidationProvider>
         </DatabaseProvider>
       </ProtectedRoute>

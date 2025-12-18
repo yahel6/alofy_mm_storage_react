@@ -1,8 +1,8 @@
-// src/pages/WarehouseDetailsPage.tsx
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useValidation } from '../contexts/ValidationContext';
+import { useSelection } from '../contexts/SelectionContext';
 import HeaderNav from '../components/HeaderNav';
 import EquipmentItemRow from '../components/EquipmentItemRow';
 import FilterChips from '../components/FilterChips';
@@ -24,14 +24,17 @@ type FilterType = 'all' | 'validate' | 'broken' | 'loaned';
 
 function WarehouseDetailsPage() {
   const { warehouseId } = useParams<{ warehouseId: string }>();
-  // Use warehouseId as scopeId. Ensure it exists.
   const scopeId = warehouseId || 'unknown_warehouse';
 
   const { warehouses, equipment, users, activities, isLoading } = useDatabase();
   const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
+  const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection: globalToggleItemSelection, clearSelection } = useSelection();
 
   const isValidationMode = isSessionActive(scopeId);
   const sessionVerifiedIds = getSessionVerifiedItems(scopeId);
+
+  const isSelectionMode = isSelectionModeActive(scopeId);
+  const selectedItemIds = getSelectedItems(scopeId);
 
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,10 +45,6 @@ function WarehouseDetailsPage() {
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
   const [subItemsModalItem, setSubItemsModalItem] = useState<EquipmentItem | null>(null);
 
-  // Bulk Selection State
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-
   // Grouping State
   const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
 
@@ -54,22 +53,13 @@ function WarehouseDetailsPage() {
   const [tempSelection, setTempSelection] = useState<string>(''); // For storing the selected Status/WarehouseId/ActivityId
 
   const toggleSelectionMode = () => {
-    setIsSelectionMode(!isSelectionMode);
-    setSelectedItemIds(new Set());
+    globalToggleSelectionMode(scopeId);
     setBulkAction(null);
     setTempSelection('');
   };
 
   const toggleItemSelection = (itemId: string) => {
-    setSelectedItemIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId);
-      } else {
-        newSet.add(itemId);
-      }
-      return newSet;
-    });
+    globalToggleItemSelection(scopeId, itemId);
   };
 
   const executeBulkAction = async () => {
@@ -94,9 +84,8 @@ function WarehouseDetailsPage() {
 
     if (success) {
       alert('הפעולה בוצעה בהצלחה');
-      // Reset
-      setIsSelectionMode(false);
-      setSelectedItemIds(new Set());
+      clearSelection(scopeId);
+      globalToggleSelectionMode(scopeId); // Exit mode
       setBulkAction(null);
       setTempSelection('');
     } else {
@@ -105,36 +94,24 @@ function WarehouseDetailsPage() {
   };
 
   const handleBulkValidate = async () => {
-    // Removed confirmation as requested
-
+    const ids = Array.from(selectedItemIds);
     if (isValidationMode) {
-      // Scoped Validation Logic
-      const ids = Array.from(selectedItemIds);
-
-      // 1. Update DB (real validation)
       await bulkValidateItems(ids);
-
-      // 2. Update Local Session (hide items)
       ids.forEach(id => verifyItem(scopeId, id));
-
-      // Removed success alert as requested ("X items hidden")
     } else {
-      // Standard Check (Legacy or outside mode) - just updates DB
       if (window.confirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`)) {
-        await bulkValidateItems(Array.from(selectedItemIds));
+        await bulkValidateItems(ids);
         alert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
       }
     }
 
-    setIsSelectionMode(false);
-    setSelectedItemIds(new Set());
+    clearSelection(scopeId);
+    globalToggleSelectionMode(scopeId); // Exit mode
   };
 
-  // ... (filteredItems and groupedItems useMemos are unchanged) ...
   const filteredItems = useMemo(() => {
     let items = equipment.filter(item => item.warehouseId === warehouseId);
 
-    // *** Validation Mode Filter: Hide already verified items ***
     if (isValidationMode) {
       items = items.filter(item => !sessionVerifiedIds.has(item.id));
     }
@@ -189,7 +166,6 @@ function WarehouseDetailsPage() {
   }, [filteredItems, isGroupedByCategory]);
 
   const handleItemClick = (item: EquipmentItem) => {
-    // If selecting, toggle selection instead of opening modal
     if (isSelectionMode) {
       toggleItemSelection(item.id);
       return;
@@ -206,7 +182,6 @@ function WarehouseDetailsPage() {
     return <div>טוען פרטי מחסן...</div>;
   }
 
-  // ... (warehouse check is unchanged) ...
   const warehouse = warehouses.find(w => w.id === warehouseId);
   const otherWarehouses = warehouses.filter(w => w.id !== warehouseId);
 
@@ -214,7 +189,6 @@ function WarehouseDetailsPage() {
     return <div><HeaderNav title="שגיאה" /><p style={{ textAlign: 'center' }}>מחסן לא נמצא.</p></div>;
   }
 
-  // ... (renderBulkActionModal is unchanged) ...
   const renderBulkActionModal = () => {
     if (!bulkAction) return null;
 
@@ -283,7 +257,6 @@ function WarehouseDetailsPage() {
         onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
       />
 
-      {/* Validation Mode Banner */}
       {isValidationMode && (
         <div style={{
           background: 'rgba(52, 199, 89, 0.2)',
@@ -401,7 +374,6 @@ function WarehouseDetailsPage() {
         )}
       </div>
 
-      {/* --- BULK ACTIONS TOOLBAR --- */}
       {isSelectionMode && !bulkAction && (
         <div style={{
           position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
@@ -430,7 +402,6 @@ function WarehouseDetailsPage() {
         </div>
       )}
 
-      {/* Styles for bulk buttons - inline for simplicity or move to CSS */}
       <style>{`
         .bulk-btn {
             background: #444; color: white; border: none; padding: 8px 12px;
@@ -503,7 +474,6 @@ function WarehouseDetailsPage() {
         />
       )}
 
-      {/* Validation Mode Modal */}
       {validationModalItem && (
         <ValidationModal
           item={validationModalItem}
@@ -526,7 +496,6 @@ function WarehouseDetailsPage() {
         />
       )}
 
-      {/* Bulk Action Selection Modal */}
       {renderBulkActionModal()}
 
     </div>
