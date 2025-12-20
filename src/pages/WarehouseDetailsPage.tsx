@@ -198,6 +198,85 @@ function WarehouseDetailsPage() {
     return items;
   }, [equipment, users, warehouseId, activeFilter, categoryFilter, searchQuery, isValidationMode, sessionVerifiedIds]);
 
+  // Helper to group by name
+  const groupByName = (items: EquipmentItem[]) => {
+    const groups: { [name: string]: EquipmentItem[] } = {};
+    items.forEach(item => {
+      if (!groups[item.name]) groups[item.name] = [];
+      groups[item.name].push(item);
+    });
+    return groups;
+  };
+
+  const renderItemOrGroup = (itemOrGroup: EquipmentItem[]) => {
+    // If single item, render normally
+    if (itemOrGroup.length === 1) {
+      const item = itemOrGroup[0];
+      return (
+        <EquipmentItemRow
+          key={item.id}
+          item={item}
+          onClick={() => handleItemClick(item)}
+          isSelectable={isSelectionMode}
+          isSelected={selectedItemIds.has(item.id)}
+          onToggle={() => toggleItemSelection(item.id)}
+          onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
+        />
+      );
+    }
+
+    // If multiple variants
+    // We render them "together".
+    // Design: A container with a shared border? or just indentation?
+    // User said: "displayed together under the same item but as two separate rows and written the difference somehow".
+    // Let's render them as a list, but maybe with a subtle connector.
+    // Or we can treat the FIRST item as the "Main" appearance (if mostly identical) and others below.
+    // But statuses differ.
+
+    // Let's try a visual grouping: A boxed container for the name.
+    const first = itemOrGroup[0];
+    const totalQty = itemOrGroup.reduce((sum, it) => sum + (it.quantity || 1), 0);
+
+    return (
+      <div key={`group-${first.name}`} style={{
+        marginBottom: '10px',
+        border: '1px solid #444',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        background: 'rgba(255,255,255,0.03)'
+      }}>
+        <div style={{
+          padding: '8px 12px',
+          background: 'rgba(255,255,255,0.05)',
+          borderBottom: '1px solid #444',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: '#ddd'
+        }}>
+          <span>{first.name}</span>
+          <span style={{ fontSize: '12px', opacity: 0.7 }}>סה״כ: {totalQty}</span>
+        </div>
+        <div>
+          {itemOrGroup.map((item) => (
+            <EquipmentItemRow
+              key={item.id}
+              item={item}
+              onClick={() => handleItemClick(item)}
+              isSelectable={isSelectionMode}
+              isSelected={selectedItemIds.has(item.id)}
+              onToggle={() => toggleItemSelection(item.id)}
+              onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
+            // Add some visual style to show it's a variant? 
+            // The Row itself is fine. Maybe strict no border?
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const groupedItems = useMemo(() => {
     if (!isGroupedByCategory) return null;
 
@@ -470,47 +549,35 @@ function WarehouseDetailsPage() {
           </p>
         ) : (
           isGroupedByCategory && groupedItems ? (
-            groupedItems.map(([categoryName, items]) => (
-              <div key={categoryName} style={{ marginBottom: '24px' }}>
-                <h3 style={{
-                  padding: '0 16px',
-                  margin: '0 0 8px 0',
-                  color: 'var(--action-color)',
-                  fontSize: '18px',
-                  background: 'var(--bg-secondary)',
-                  paddingTop: '8px',
-                  paddingBottom: '8px',
-                  position: 'sticky',
-                  top: '0',
-                  zIndex: 10
-                }}>
-                  {categoryName} ({items.length})
-                </h3>
-                {items.map(item => (
-                  <EquipmentItemRow
-                    key={item.id}
-                    item={item}
-                    onClick={() => handleItemClick(item)}
-                    isSelectable={isSelectionMode}
-                    isSelected={selectedItemIds.has(item.id)}
-                    onToggle={() => toggleItemSelection(item.id)}
-                    onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
-                  />
-                ))}
-              </div>
-            ))
+            groupedItems.map(([categoryName, items]) => {
+              const nameGroups = groupByName(items);
+              const groupNames = Object.keys(nameGroups).sort();
+
+              return (
+                <div key={categoryName} style={{ marginBottom: '24px' }}>
+                  <h3 style={{
+                    padding: '0 16px',
+                    margin: '0 0 8px 0',
+                    color: 'var(--action-color)',
+                    fontSize: '18px',
+                    background: 'var(--bg-secondary)',
+                    paddingTop: '8px',
+                    paddingBottom: '8px',
+                    position: 'sticky',
+                    top: '0',
+                    zIndex: 10
+                  }}>
+                    {categoryName} ({items.length})
+                  </h3>
+                  {groupNames.map(name => renderItemOrGroup(nameGroups[name]))}
+                </div>
+              );
+            })
           ) : (
-            filteredItems.map(item => (
-              <EquipmentItemRow
-                key={item.id}
-                item={item}
-                onClick={() => handleItemClick(item)}
-                isSelectable={isSelectionMode}
-                isSelected={selectedItemIds.has(item.id)}
-                onToggle={() => toggleItemSelection(item.id)}
-                onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
-              />
-            ))
+            // Non-category grouped (flat list, but still grouped by Name)
+            Object.values(groupByName(filteredItems))
+              .sort((a, b) => a[0].name.localeCompare(b[0].name))
+              .map(group => renderItemOrGroup(group))
           )
         )}
       </div>

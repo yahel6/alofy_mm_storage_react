@@ -63,6 +63,32 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
                 (x{item.quantity})
               </span>
             )}
+            {item.status === 'loaned' && (
+              <span style={{
+                fontSize: '11px',
+                background: '#FF9F0A22',
+                color: '#FF9F0A',
+                border: '1px solid #FF9F0A',
+                padding: '1px 6px',
+                borderRadius: '4px',
+                marginRight: '8px'
+              }}>
+                בפעילות
+              </span>
+            )}
+            {item.status !== 'loaned' && item.assignedActivityName && (
+              <span style={{
+                fontSize: '11px',
+                background: '#5AC8FA22',
+                color: '#5AC8FA',
+                border: '1px solid #5AC8FA',
+                padding: '1px 6px',
+                borderRadius: '4px',
+                marginRight: '8px'
+              }}>
+                משוריין ל: {item.assignedActivityName}
+              </span>
+            )}
             {/* New Button for Sub-Items */}
             {item.subItems && item.subItems.length > 0 && (
               <button

@@ -92,7 +92,10 @@ function EditActivityEquipmentPage() {
     // Perform split
     // The new item should be created in the SAME warehouse, same status
     // And we want to SELECT the new item (the partial amount) for the activity
-    const newItemId = await splitItem(splitCandidate.id, quantity, {});
+    const newItemId = await splitItem(splitCandidate.id, quantity, {
+      assignedActivityId: activityId,
+      assignedActivityName: activity?.name
+    });
 
     if (newItemId) {
       // Add the NEW item to selection

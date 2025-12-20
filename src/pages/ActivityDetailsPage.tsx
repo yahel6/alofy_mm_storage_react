@@ -207,6 +207,89 @@ function ActivityDetailsPage() {
   const totalAssigned = finalAssignedItems.length;
   const totalItems = activity.equipmentRequiredIds.length + activity.equipmentMissingIds.length;
 
+  // Helper to group by name
+  const groupByName = (items: EquipmentItem[]) => {
+    const groups: { [name: string]: EquipmentItem[] } = {};
+    items.forEach(item => {
+      if (!groups[item.name]) groups[item.name] = [];
+      groups[item.name].push(item);
+    });
+    return groups;
+  };
+
+  const renderItemOrGroup = (itemOrGroup: EquipmentItem[]) => {
+    if (itemOrGroup.length === 1) {
+      const item = itemOrGroup[0];
+      // Determine click handler based on where this item came from (missing vs assigned)
+      // Since this function is generic, we might need a flag or contextual handler?
+      // Actually, 'renderItems' loop usually knows the context.
+      // But here we are separating Assigned vs Missing lists.
+      // We can assume the caller passes the right onClick via a prop wrapper? No, this is internal.
+
+      // Workaround: We can check if item is in Missing vs Assigned.
+      // Or duplicate calls for Assigned vs Missing lists.
+
+      const isMissing = finalMissingItems.some(i => i.id === item.id);
+      const onClick = isMissing ? () => handleGapItemClick(item) : () => handleItemClick(item);
+
+      return (
+        <EquipmentItemRow
+          key={item.id}
+          item={item}
+          onClick={onClick}
+          isSelectable={isSelectionMode}
+          isSelected={selectedItemIds.has(item.id)}
+          onToggle={() => toggleItemSelection(item.id)}
+        />
+      );
+    }
+
+    const first = itemOrGroup[0];
+    const totalQty = itemOrGroup.reduce((sum, it) => sum + (it.quantity || 1), 0);
+    const isMissingGroup = finalMissingItems.some(i => i.id === first.id);
+
+    return (
+      <div key={`group-${first.name}`} style={{
+        marginBottom: '10px',
+        border: isMissingGroup ? '1px solid #ff4444' : '1px solid #444', // Red border for missing gaps?
+        borderRadius: '8px',
+        overflow: 'hidden',
+        background: 'rgba(255,255,255,0.03)'
+      }}>
+        <div style={{
+          padding: '8px 12px',
+          background: 'rgba(255,255,255,0.05)',
+          borderBottom: '1px solid #444',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: isMissingGroup ? '#ff4444' : '#ddd'
+        }}>
+          <span>{first.name}</span>
+          <span style={{ fontSize: '12px', opacity: 0.7 }}>סה״כ: {totalQty}</span>
+        </div>
+        <div>
+          {itemOrGroup.map(item => {
+            const isMissing = finalMissingItems.some(i => i.id === item.id);
+            const onClick = isMissing ? () => handleGapItemClick(item) : () => handleItemClick(item);
+
+            return (
+              <EquipmentItemRow
+                key={item.id}
+                item={item}
+                onClick={onClick}
+                isSelectable={isSelectionMode}
+                isSelected={selectedItemIds.has(item.id)}
+                onToggle={() => toggleItemSelection(item.id)}
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ paddingBottom: isSelectionMode ? '140px' : undefined }}>
       <HeaderNav
@@ -295,37 +378,23 @@ function ActivityDetailsPage() {
             </p>
           )}
 
+          {/* Grouped Missing Items */}
           {finalMissingItems.length > 0 && (
-            finalMissingItems.map(item => (
-              <EquipmentItemRow
-                key={item.id}
-                item={item}
-                onClick={() => handleGapItemClick(item)}
-                isSelectable={isSelectionMode}
-                isSelected={selectedItemIds.has(item.id)}
-                onToggle={() => toggleItemSelection(item.id)}
-              // Optional: Indicate visual difference for missing items via style or prop if Row supports it
-              // For now, relies on standard row. The user can see status in the row.
-              />
-            ))
+            Object.values(groupByName(finalMissingItems))
+              .sort((a, b) => a[0].name.localeCompare(b[0].name))
+              .map(group => renderItemOrGroup(group))
           )}
-          {/* ... (assigned items list) ... */}
+
+          {/* Grouped Assigned Items */}
           <h4 className="pane-subtitle">ציוד כשיר ומשוריין</h4>
           {finalAssignedItems.length === 0 && !isValidationMode ? (
             <p style={{ color: 'var(--text-secondary)', padding: '10px 0', textAlign: 'center' }}>
               לא שוריין ציוד לפעילות זו.
             </p>
           ) : (
-            finalAssignedItems.map(item => (
-              <EquipmentItemRow
-                key={item.id}
-                item={item}
-                onClick={() => handleItemClick(item)}
-                isSelectable={isSelectionMode}
-                isSelected={selectedItemIds.has(item.id)}
-                onToggle={() => toggleItemSelection(item.id)}
-              />
-            ))
+            Object.values(groupByName(finalAssignedItems))
+              .sort((a, b) => a[0].name.localeCompare(b[0].name))
+              .map(group => renderItemOrGroup(group))
           )}
         </div>
       </div>

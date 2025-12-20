@@ -28,6 +28,8 @@ export interface EquipmentItem {
   status: 'available' | 'charging' | 'broken' | 'repair' | 'loaned';
   lastCheckDate: string;
   loanedToUserId: string | null;
+  assignedActivityId?: string | null;
+  assignedActivityName?: string | null;
   quantity?: number;
   subItems?: SubItem[];
 }

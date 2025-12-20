@@ -27,6 +27,7 @@ export const updateEquipmentStatus = async (itemId: string, newStatus: Equipment
   try {
     await updateDoc(itemRef, updateData);
     console.log("עדכון סטטוס הצליח!");
+    await checkForMerge(itemId); // Auto-Merge
   } catch (error) {
     console.error("שגיאה בעדכון סטטוס:", error);
     alert("שגיאה בעדכון הסטטוס.");
@@ -84,7 +85,9 @@ export const addNewEquipment = async (itemData: Omit<EquipmentItem, 'id' | 'loan
     // addDoc ייצור ID אוטומטי
     const docRef = await addDoc(collection(db, "equipment"), {
       ...itemData,
-      loanedToUserId: null // הוספת שדה חסר
+      loanedToUserId: null,
+      assignedActivityId: null,
+      assignedActivityName: null
     });
     console.log(`פריט חדש ${docRef.id} נוסף לענן.`);
     return docRef.id;
@@ -134,7 +137,28 @@ export const deleteActivity = async (activityId: string, activityName: string) =
   }
   const activityRef = doc(db, "activities", activityId);
   try {
-    await deleteDoc(activityRef);
+    const snap = await getDoc(activityRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const allIds = [...(data.equipmentRequiredIds || []), ...(data.equipmentMissingIds || [])];
+
+      const batch = writeBatch(db);
+      allIds.forEach(id => {
+        batch.update(doc(db, 'equipment', id), {
+          assignedActivityId: null,
+          assignedActivityName: null
+        });
+      });
+      batch.delete(activityRef);
+      await batch.commit();
+
+      // Check for merge for all items
+      for (const id of allIds) {
+        await checkForMerge(id);
+      }
+    } else {
+      await deleteDoc(activityRef);
+    }
     console.log(`פעילות ${activityId} נמחקה מהענן.`);
   } catch (error) {
     console.error("שגיאה במחיקת פעילות מהענן:", error);
@@ -161,11 +185,43 @@ export const updateActivityEquipment = async (activityId: string, newEquipmentId
   });
 
   const activityRef = doc(db, "activities", activityId);
+  const activitySnap = await getDoc(activityRef);
+  const activityName = activitySnap.exists() ? activitySnap.data().name : '...';
+
   try {
-    await updateDoc(activityRef, {
+    const batch = writeBatch(db);
+
+    // 1. Update activity doc
+    batch.update(activityRef, {
       equipmentRequiredIds: equipmentRequiredIds,
       equipmentMissingIds: equipmentMissingIds
     });
+
+    // 2. Identify removed items to clear their assignment
+    const oldRequired = activitySnap.exists() ? activitySnap.data().equipmentRequiredIds || [] : [];
+    const oldMissing = activitySnap.exists() ? activitySnap.data().equipmentMissingIds || [] : [];
+    const oldIds = [...oldRequired, ...oldMissing];
+
+    const removedIds = oldIds.filter(id => !newEquipmentIds.includes(id));
+    const addedIds = newEquipmentIds.filter(id => !oldIds.includes(id));
+
+    removedIds.forEach(id => {
+      const ref = doc(db, 'equipment', id);
+      batch.update(ref, { assignedActivityId: null, assignedActivityName: null });
+    });
+
+    addedIds.forEach(id => {
+      const ref = doc(db, 'equipment', id);
+      batch.update(ref, { assignedActivityId: activityId, assignedActivityName: activityName });
+    });
+
+    await batch.commit();
+
+    // 3. For removed items, check for merge
+    for (const id of removedIds) {
+      await checkForMerge(id);
+    }
+
     console.log(`ציוד פעילות ענן ${activityId} עודכן בהצלחה.`);
   } catch (error) {
     console.error("שגיאה בעדכון ציוד פעילות בענן:", error);
@@ -345,6 +401,12 @@ export const checkinActivityEquipment = async (
   try {
     await batch.commit();
     console.log("Check-in הושלם בהצלחה!");
+
+    // Auto-Merge for all items checked in
+    for (const item of itemsToCheckin) {
+      await checkForMerge(item.id);
+    }
+
     return true;
   } catch (error) {
     console.error("שגיאה בביצוע Check-in:", error);
@@ -357,11 +419,26 @@ export const removeItemFromActivity = async (activityId: string, itemId: string)
   const activityRef = doc(db, 'activities', activityId);
 
   try {
-    await updateDoc(activityRef, {
-      // arrayRemove יסיר את ה-ID מהמערך, לא משנה באיזה מהם הוא
+    const batch = writeBatch(db);
+
+    // 1. Remove from activity
+    batch.update(activityRef, {
       equipmentRequiredIds: arrayRemove(itemId),
       equipmentMissingIds: arrayRemove(itemId)
     });
+
+    // 2. Clear from item
+    const itemRef = doc(db, 'equipment', itemId);
+    batch.update(itemRef, {
+      assignedActivityId: null,
+      assignedActivityName: null
+    });
+
+    await batch.commit();
+
+    // 3. Check for merge
+    await checkForMerge(itemId);
+
     console.log("הפריט הוסר בהצלחה מהפעילות!");
     return true;
   } catch (error) {
@@ -449,6 +526,9 @@ export const bulkUpdateStatus = async (itemIds: string[], newStatus: EquipmentSt
   try {
     await batch.commit();
     console.log("עדכון סטטוס קבוצתי הושלם.");
+    for (const id of itemIds) {
+      await checkForMerge(id);
+    }
     return true;
   } catch (error) {
     console.error("error bulk status:", error);
@@ -459,16 +539,69 @@ export const bulkUpdateStatus = async (itemIds: string[], newStatus: EquipmentSt
 /**
  * העברת פריטים למחסן אחר
  */
+import { query, where, getDocs } from 'firebase/firestore'; // Ensure imports
+
+/**
+ * העברת פריטים למחסן אחר (כולל מיזוג חכם)
+ */
 export const bulkMoveItemsToWarehouse = async (itemIds: string[], targetWarehouseId: string) => {
   if (!itemIds.length) return false;
-  const batch = writeBatch(db);
 
-  itemIds.forEach(id => {
-    const ref = doc(db, 'equipment', id);
-    batch.update(ref, { warehouseId: targetWarehouseId });
-  });
+  console.log(`מעביר ${itemIds.length} פריטים למחסן ${targetWarehouseId} (עם מיזוג)...`);
+
+  const batch = writeBatch(db);
+  const itemsRef = collection(db, 'equipment');
 
   try {
+    // 1. Fetch all items to be moved
+    const movedItemsQuery = await Promise.all(itemIds.map(id => getDoc(doc(db, 'equipment', id))));
+    const movedItems = movedItemsQuery.map(snap => ({ id: snap.id, ...snap.data() } as EquipmentItem));
+
+    // 2. Fetch all items in target warehouse (for matching)
+    // Optimization: In a real large app, we might query by name, but here we fetch all in target warehouse.
+    // Or we can query individually for each moved item?
+    // Let's fetch all items in target warehouse to reduce reads if moving many items, 
+    // OR just query for existence for each.
+    // Given scope, querying for each might be safer if warehouse is huge, but fetching warehouse is easier code.
+    // Let's query matching items by Name/Status/Category for each moved item.
+
+    // Actually, to do it efficiently in a batch without reading too much:
+    // We can iterate moved items.
+
+    for (const item of movedItems) {
+      if (!item) continue;
+
+      const q = query(
+        itemsRef,
+        where('warehouseId', '==', targetWarehouseId),
+        where('name', '==', item.name),
+        where('status', '==', item.status),
+        where('category', '==', item.category || null),
+        where('assignedActivityId', '==', item.assignedActivityId || null)
+      );
+
+      const matchSnap = await getDocs(q);
+
+      if (!matchSnap.empty) {
+        // Found a match! Merge.
+        const targetItemDoc = matchSnap.docs[0];
+        const targetItem = targetItemDoc.data();
+        const newQuantity = (targetItem.quantity || 1) + (item.quantity || 1);
+
+        // Update target item
+        batch.update(targetItemDoc.ref, { quantity: newQuantity });
+
+        // Delete source item (since it merged)
+        batch.delete(doc(db, 'equipment', item.id));
+
+        console.log(`פריט ${item.name} מוזג עם פריט קיים ${targetItemDoc.id}`);
+      } else {
+        // No match. Just move.
+        const itemRef = doc(db, 'equipment', item.id);
+        batch.update(itemRef, { warehouseId: targetWarehouseId });
+      }
+    }
+
     await batch.commit();
     console.log("העברת פריטים הושלמה.");
     return true;
@@ -491,12 +624,24 @@ export const bulkAssignItemsToActivity = async (itemIds: string[], targetActivit
 
     const currentData = snap.data();
     const currentRequired = currentData.equipmentRequiredIds || [];
+    const addedIds = itemIds.filter(id => !currentRequired.includes(id));
 
     // מיזוג ללא כפילויות
     const newSet = new Set([...currentRequired, ...itemIds]);
     const updatedList = Array.from(newSet);
 
-    await updateDoc(activityRef, { equipmentRequiredIds: updatedList });
+    const batch = writeBatch(db);
+    batch.update(activityRef, { equipmentRequiredIds: updatedList });
+
+    // Update items
+    addedIds.forEach(id => {
+      batch.update(doc(db, 'equipment', id), {
+        assignedActivityId: targetActivityId,
+        assignedActivityName: currentData.name
+      });
+    });
+
+    await batch.commit();
     console.log("שיוך פריטים לפעילות הושלם.");
     return true;
   } catch (error) {
@@ -511,21 +656,21 @@ export const bulkAssignItemsToActivity = async (itemIds: string[], targetActivit
  */
 export const splitItem = async (originalItemId: string, splitQuantity: number, newItemData: Partial<EquipmentItem>) => {
   const itemRef = doc(db, 'equipment', originalItemId);
-  
+
   try {
     const itemSnap = await getDoc(itemRef);
     if (!itemSnap.exists()) throw new Error("פריט לא נמצא");
-    
+
     const originalItem = itemSnap.data() as EquipmentItem;
     const currentQuantity = originalItem.quantity || 1;
-    
+
     // Safety check
     if (splitQuantity >= currentQuantity) {
       console.warn("Split quantity equal or greater than total. Treating as full update (no split).");
       if (splitQuantity === currentQuantity) {
-         // Just update the original item
-         await updateDoc(itemRef, newItemData);
-         return originalItemId;
+        // Just update the original item
+        await updateDoc(itemRef, newItemData);
+        return originalItemId;
       }
       return null;
     }
@@ -542,7 +687,7 @@ export const splitItem = async (originalItemId: string, splitQuantity: number, n
       ...newItemData,
       quantity: splitQuantity,
     };
-    
+
     // Ensure we don't accidentally copy ID
     delete newItem.id;
 
@@ -551,9 +696,61 @@ export const splitItem = async (originalItemId: string, splitQuantity: number, n
     await batch.commit();
     console.log("פריט פוצל בהצלחה.");
     return newItemRef.id;
-
   } catch (error) {
     console.error("שגיאה בפיצול פריט:", error);
     return null;
+  }
+};
+
+/**
+ * בודק אם ניתן למזג פריט זה עם פריט זהה (אותו שם, סטטוס, קטגוריה, מחסן)
+ * אם כן: ממזג ומוחק את הפריט הנוכחי.
+ */
+export const checkForMerge = async (itemId: string) => {
+  try {
+    const itemRef = doc(db, 'equipment', itemId);
+    const itemSnap = await getDoc(itemRef);
+    if (!itemSnap.exists()) return;
+
+    const item = itemSnap.data() as EquipmentItem;
+
+    // Query for identical items in the same warehouse
+    // We look for items with same Name, Status, Warehouse, Category.
+    // And ID != itemId
+    const q = query(
+      collection(db, 'equipment'),
+      where('warehouseId', '==', item.warehouseId),
+      where('name', '==', item.name),
+      where('status', '==', item.status),
+      where('category', '==', item.category || null),
+      where('assignedActivityId', '==', item.assignedActivityId || null)
+    );
+
+    const matchSnap = await getDocs(q);
+
+    // Find a match that is NOT the item itself
+    const matchDoc = matchSnap.docs.find(d => d.id !== itemId);
+
+    if (matchDoc) {
+      const matchItem = matchDoc.data();
+      const matchId = matchDoc.id;
+
+      console.log(`ממזג פריט ${itemId} אל תוך ${matchId}...`);
+
+      const newQuantity = (matchItem.quantity || 1) + (item.quantity || 1);
+
+      const batch = writeBatch(db);
+
+      // Update target
+      batch.update(doc(db, 'equipment', matchId), { quantity: newQuantity });
+
+      // Delete source
+      batch.delete(itemRef);
+
+      await batch.commit();
+      console.log("מיזוג אוטומטי בוצע בהצלחה.");
+    }
+  } catch (error) {
+    console.error("Error in checkForMerge:", error);
   }
 };
