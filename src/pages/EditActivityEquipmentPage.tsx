@@ -2,9 +2,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
-import { updateActivityEquipment } from '../firebaseUtils';
+import { updateActivityEquipment, splitItem } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import EquipmentSelectItem from '../components/EquipmentSelectItem';
+import QuantityModal from '../components/QuantityModal';
+import type { EquipmentItem } from '../types';
 import './EditActivityEquipmentPage.css';
 
 function EditActivityEquipmentPage() {
@@ -15,6 +17,9 @@ function EditActivityEquipmentPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
+
+  // State for splitting
+  const [splitCandidate, setSplitCandidate] = useState<EquipmentItem | null>(null);
 
   const activity = useMemo(() => {
     return activities.find(act => act.id === activityId);
@@ -50,6 +55,19 @@ function EditActivityEquipmentPage() {
   }, [allEquipment, selectedWarehouseId, searchTerm]);
 
   const handleToggle = (itemId: string) => {
+    // Check if we are selecting (not unselecting)
+    if (!selectedIds.has(itemId)) {
+      const item = allEquipment.find(e => e.id === itemId);
+      if (item && item.quantity && item.quantity > 1) {
+        setSplitCandidate(item);
+        return;
+      }
+    }
+
+    toggleId(itemId);
+  };
+
+  const toggleId = (itemId: string) => {
     setSelectedIds(prevIds => {
       const newIds = new Set(prevIds);
       if (newIds.has(itemId)) {
@@ -59,6 +77,28 @@ function EditActivityEquipmentPage() {
       }
       return newIds;
     });
+  };
+
+  const handleSplitConfirm = async (quantity: number) => {
+    if (!splitCandidate) return;
+
+    // If selecting full quantity, just toggle normally
+    if (splitCandidate.quantity && quantity === splitCandidate.quantity) {
+      toggleId(splitCandidate.id);
+      setSplitCandidate(null);
+      return;
+    }
+
+    // Perform split
+    // The new item should be created in the SAME warehouse, same status
+    // And we want to SELECT the new item (the partial amount) for the activity
+    const newItemId = await splitItem(splitCandidate.id, quantity, {});
+
+    if (newItemId) {
+      // Add the NEW item to selection
+      toggleId(newItemId);
+    }
+    setSplitCandidate(null);
   };
 
   const handleSave = async () => {
@@ -203,6 +243,16 @@ function EditActivityEquipmentPage() {
           שמור שינויים ({selectedIds.size} פריטים)
         </button>
       </div>
+
+      {/* Split Modal */}
+      {splitCandidate && splitCandidate.quantity && (
+        <QuantityModal
+          title={`בחר כמות להוספה (${splitCandidate.name})`}
+          maxQuantity={splitCandidate.quantity}
+          onConfirm={handleSplitConfirm}
+          onCancel={() => setSplitCandidate(null)}
+        />
+      )}
     </div>
   );
 }

@@ -504,3 +504,56 @@ export const bulkAssignItemsToActivity = async (itemIds: string[], targetActivit
     return false;
   }
 };
+/**
+ * מפצל פריט ציוד.
+ * מקטין את הכמות של הפריט המקורי, ויוצר פריט חדש עם הכמות שפוצלה, ושאר הנתונים ששונו.
+ * מחזיר את ה-ID של הפריט החדש.
+ */
+export const splitItem = async (originalItemId: string, splitQuantity: number, newItemData: Partial<EquipmentItem>) => {
+  const itemRef = doc(db, 'equipment', originalItemId);
+  
+  try {
+    const itemSnap = await getDoc(itemRef);
+    if (!itemSnap.exists()) throw new Error("פריט לא נמצא");
+    
+    const originalItem = itemSnap.data() as EquipmentItem;
+    const currentQuantity = originalItem.quantity || 1;
+    
+    // Safety check
+    if (splitQuantity >= currentQuantity) {
+      console.warn("Split quantity equal or greater than total. Treating as full update (no split).");
+      if (splitQuantity === currentQuantity) {
+         // Just update the original item
+         await updateDoc(itemRef, newItemData);
+         return originalItemId;
+      }
+      return null;
+    }
+
+    const batch = writeBatch(db);
+
+    // 1. Update original item quantity
+    batch.update(itemRef, { quantity: currentQuantity - splitQuantity });
+
+    // 2. Create new item
+    const newItemRef = doc(collection(db, 'equipment'));
+    const newItem: any = {
+      ...originalItem,
+      ...newItemData,
+      quantity: splitQuantity,
+    };
+    
+    // Ensure we don't accidentally copy ID
+    delete newItem.id;
+
+    batch.set(newItemRef, newItem);
+
+    await batch.commit();
+    console.log("פריט פוצל בהצלחה.");
+    return newItemRef.id;
+
+  } catch (error) {
+    console.error("שגיאה בפיצול פריט:", error);
+    return null;
+  }
+};

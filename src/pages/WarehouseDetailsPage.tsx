@@ -15,10 +15,12 @@ import {
   bulkValidateItems,
   bulkUpdateStatus,
   bulkMoveItemsToWarehouse,
-  bulkAssignItemsToActivity
+  bulkAssignItemsToActivity,
+  splitItem
 } from '../firebaseUtils';
 import type { EquipmentItem } from '../types';
 import '../components/Modal.css'; // Import generic modal styles
+import QuantityModal from '../components/QuantityModal';
 
 type FilterType = 'all' | 'validate' | 'broken' | 'loaned';
 
@@ -52,6 +54,9 @@ function WarehouseDetailsPage() {
   const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'activity' | 'category' | null>(null);
   const [tempSelection, setTempSelection] = useState<string>(''); // For storing the selected Status/WarehouseId/ActivityId
 
+  // State for splitting
+  const [splitCandidate, setSplitCandidate] = useState<EquipmentItem | null>(null);
+
   const toggleSelectionMode = () => {
     globalToggleSelectionMode(scopeId);
     setBulkAction(null);
@@ -62,11 +67,37 @@ function WarehouseDetailsPage() {
     globalToggleItemSelection(scopeId, itemId);
   };
 
-  const executeBulkAction = async () => {
-    if (selectedItemIds.size === 0) return;
-    const ids = Array.from(selectedItemIds);
-    let success = false;
+  const handleSplitConfirm = async (quantity: number) => {
+    if (!splitCandidate) return;
 
+    // Logic: 
+    // We are inside "executeBulkAction" flow, logically paused.
+    // But wait, executeBulkAction uses state `bulkAction` and `tempSelection`.
+    // We want to execute the action ONLY on the SPLIT part?
+    // Yes. "Move 3 units out of 10".
+    // So we split 3 units -> New Item.
+    // Then we execute the action on New Item ID?
+
+    const originalQuantity = splitCandidate.quantity || 1;
+
+    if (quantity < originalQuantity) {
+      // Partial Action
+      // 1. Split
+      const newItemId = await splitItem(splitCandidate.id, quantity, {});
+      // 2. Execute Action on NEW Item
+      if (newItemId) {
+        await performActionOnIds([newItemId]);
+      }
+    } else {
+      // Full Action on Original Item
+      await performActionOnIds([splitCandidate.id]);
+    }
+
+    setSplitCandidate(null);
+  };
+
+  const performActionOnIds = async (ids: string[]) => {
+    let success = false;
     try {
       if (bulkAction === 'category') {
         success = await bulkUpdateCategory(ids, tempSelection || null);
@@ -78,7 +109,7 @@ function WarehouseDetailsPage() {
         success = await bulkAssignItemsToActivity(ids, tempSelection);
       }
     } catch (err) {
-      console.error("Error in executeBulkAction:", err);
+      console.error("Error in performActionOnIds:", err);
       success = false;
     }
 
@@ -91,6 +122,23 @@ function WarehouseDetailsPage() {
     } else {
       alert('אירעה שגיאה בביצוע הפעולה');
     }
+  };
+
+  const executeBulkAction = async () => {
+    if (selectedItemIds.size === 0) return;
+
+    // Check if single item with Quantity > 1 (and not Category update)
+    if (selectedItemIds.size === 1 && bulkAction !== 'category') {
+      const itemId = Array.from(selectedItemIds)[0];
+      const item = equipment.find(e => e.id === itemId);
+      if (item && item.quantity && item.quantity > 1) {
+        setSplitCandidate(item);
+        return;
+      }
+    }
+
+    const ids = Array.from(selectedItemIds);
+    await performActionOnIds(ids);
   };
 
   const handleBulkValidate = async () => {
@@ -497,6 +545,15 @@ function WarehouseDetailsPage() {
       )}
 
       {renderBulkActionModal()}
+
+      {splitCandidate && splitCandidate.quantity && (
+        <QuantityModal
+          title={`בחר כמות עבור "${splitCandidate.name}"`}
+          maxQuantity={splitCandidate.quantity}
+          onConfirm={handleSplitConfirm}
+          onCancel={() => setSplitCandidate(null)}
+        />
+      )}
 
     </div>
   );
