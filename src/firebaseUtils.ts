@@ -63,13 +63,24 @@ export const updateEquipmentItem = async (equipmentId: string, newData: Omit<Equ
   const itemRef = doc(db, 'equipment', equipmentId);
   try {
     // ניצור אובייקט נקי לעדכון
-    const dataToUpdate: any = { ...newData };
+    const dataToUpdate: any = {
+      ...newData,
+      name: (newData.name || "").trim(),
+      category: newData.category || null,
+      assignedActivityId: (newData as any).assignedActivityId || null,
+      assignedActivityName: (newData as any).assignedActivityName || null
+    };
+
     if (newData.status !== 'loaned') {
       dataToUpdate.loanedToUserId = null;
     }
 
     await updateDoc(itemRef, dataToUpdate);
     console.log(`פריט ענן ${equipmentId} עודכן בהצלחה.`);
+
+    // Auto-Merge check
+    await checkForMerge(equipmentId);
+
     return true;
   } catch (error) {
     console.error("שגיאה בעדכון פריט בענן:", error);
@@ -85,11 +96,16 @@ export const addNewEquipment = async (itemData: Omit<EquipmentItem, 'id' | 'loan
     // addDoc ייצור ID אוטומטי
     const docRef = await addDoc(collection(db, "equipment"), {
       ...itemData,
+      name: itemData.name.trim(),
       loanedToUserId: null,
       assignedActivityId: null,
       assignedActivityName: null
     });
     console.log(`פריט חדש ${docRef.id} נוסף לענן.`);
+
+    // Auto-Merge check
+    await checkForMerge(docRef.id);
+
     return docRef.id;
   } catch (error) {
     console.error("שגיאה בהוספת פריט חדש לענן:", error);
@@ -714,16 +730,19 @@ export const checkForMerge = async (itemId: string) => {
 
     const item = itemSnap.data() as EquipmentItem;
 
+    // Normalize fields for strict matching
+    const normalizedName = (item.name || "").trim();
+    const normalizedCategory = item.category || null;
+    const normalizedActivityId = item.assignedActivityId || null;
+
     // Query for identical items in the same warehouse
-    // We look for items with same Name, Status, Warehouse, Category.
-    // And ID != itemId
     const q = query(
       collection(db, 'equipment'),
       where('warehouseId', '==', item.warehouseId),
-      where('name', '==', item.name),
+      where('name', '==', normalizedName),
       where('status', '==', item.status),
-      where('category', '==', item.category || null),
-      where('assignedActivityId', '==', item.assignedActivityId || null)
+      where('category', '==', normalizedCategory),
+      where('assignedActivityId', '==', normalizedActivityId)
     );
 
     const matchSnap = await getDocs(q);

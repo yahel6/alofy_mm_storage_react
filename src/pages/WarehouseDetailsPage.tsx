@@ -64,32 +64,45 @@ function WarehouseDetailsPage() {
   };
 
   const toggleItemSelection = (itemId: string) => {
+    // If selecting (not unselecting)
+    if (!selectedItemIds.has(itemId)) {
+      const item = equipment.find(e => e.id === itemId);
+      if (item && item.quantity && item.quantity > 1) {
+        setSplitCandidate(item);
+        return;
+      }
+    }
     globalToggleItemSelection(scopeId, itemId);
   };
 
   const handleSplitConfirm = async (quantity: number) => {
     if (!splitCandidate) return;
 
-    // Logic: 
-    // We are inside "executeBulkAction" flow, logically paused.
-    // But wait, executeBulkAction uses state `bulkAction` and `tempSelection`.
-    // We want to execute the action ONLY on the SPLIT part?
-    // Yes. "Move 3 units out of 10".
-    // So we split 3 units -> New Item.
-    // Then we execute the action on New Item ID?
+    // CASE 1: Selection Mode split (split-on-selection)
+    if (isSelectionMode) {
+      const originalQuantity = splitCandidate.quantity || 1;
+      if (quantity < originalQuantity) {
+        // Split and select NEW item
+        const newItemId = await splitItem(splitCandidate.id, quantity, {});
+        if (newItemId) {
+          globalToggleItemSelection(scopeId, newItemId);
+        }
+      } else {
+        // Just select full item
+        globalToggleItemSelection(scopeId, splitCandidate.id);
+      }
+      setSplitCandidate(null);
+      return;
+    }
 
+    // CASE 2: Regular Mode split (triggered from single-item bulk action dropdown)
     const originalQuantity = splitCandidate.quantity || 1;
-
     if (quantity < originalQuantity) {
-      // Partial Action
-      // 1. Split
       const newItemId = await splitItem(splitCandidate.id, quantity, {});
-      // 2. Execute Action on NEW Item
       if (newItemId) {
         await performActionOnIds([newItemId]);
       }
     } else {
-      // Full Action on Original Item
       await performActionOnIds([splitCandidate.id]);
     }
 
@@ -126,16 +139,6 @@ function WarehouseDetailsPage() {
 
   const executeBulkAction = async () => {
     if (selectedItemIds.size === 0) return;
-
-    // Check if single item with Quantity > 1 (and not Category update)
-    if (selectedItemIds.size === 1 && bulkAction !== 'category') {
-      const itemId = Array.from(selectedItemIds)[0];
-      const item = equipment.find(e => e.id === itemId);
-      if (item && item.quantity && item.quantity > 1) {
-        setSplitCandidate(item);
-        return;
-      }
-    }
 
     const ids = Array.from(selectedItemIds);
     await performActionOnIds(ids);
