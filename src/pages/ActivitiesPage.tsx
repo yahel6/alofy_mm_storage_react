@@ -14,7 +14,7 @@ function ActivitiesPage() {
     <div>
       <div className="page-header">
         <h1 className="main-title">פעילויות</h1>
-        <div className="subtitle">הפעילויות האחרונות שלך</div>
+        <div className="subtitle">הפעילויות שעודכנו לאחרונה</div>
       </div>
       <div className="container">
         {/* 3. הצגת רשימת הפעילויות */}
@@ -23,9 +23,11 @@ function ActivitiesPage() {
             לא נוצרו עדיין פעילויות.
           </p>
         ) : (
-          activities.map(activity => (
-            <ActivityCard key={activity.id} activity={activity} />
-          ))
+          [...activities]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .map(activity => (
+              <ActivityCard key={activity.id} activity={activity} />
+            ))
         )}
       </div>
     </div>

@@ -119,8 +119,9 @@ export const addNewActivity = async (activityData: Omit<Activity, 'id' | 'equipm
   try {
     const docRef = await addDoc(collection(db, "activities"), {
       ...activityData,
-      equipmentRequiredIds: [], // ברירת מחדל
-      equipmentMissingIds: []  // ברירת מחדל
+      date: new Date().toISOString(), // Always use current date/time
+      equipmentRequiredIds: [],
+      equipmentMissingIds: []
     });
     console.log(`פעילות חדשה ${docRef.id} נוספה לענן.`);
     return docRef.id;
@@ -135,7 +136,11 @@ export const addNewActivity = async (activityData: Omit<Activity, 'id' | 'equipm
 export const updateActivity = async (activityId: string, newData: Partial<Activity>) => {
   const activityRef = doc(db, "activities", activityId);
   try {
-    await updateDoc(activityRef, newData);
+    const updateData = {
+      ...newData,
+      date: new Date().toISOString() // Update date on every edit
+    };
+    await updateDoc(activityRef, updateData);
     console.log(`פעילות ענן ${activityId} עודכנה בהצלחה.`);
     return true;
   } catch (error) {
@@ -210,7 +215,8 @@ export const updateActivityEquipment = async (activityId: string, newEquipmentId
     // 1. Update activity doc
     batch.update(activityRef, {
       equipmentRequiredIds: equipmentRequiredIds,
-      equipmentMissingIds: equipmentMissingIds
+      equipmentMissingIds: equipmentMissingIds,
+      date: new Date().toISOString() // Update date
     });
 
     // 2. Identify removed items to clear their assignment
@@ -380,6 +386,10 @@ export const checkoutActivityEquipment = async (
     }
   });
 
+  // Update activity date
+  const activityRef = doc(db, 'activities', activity.id);
+  batch.update(activityRef, { date: new Date().toISOString() });
+
   try {
     await batch.commit();
     console.log("Check-out הושלם בהצלחה!");
@@ -414,6 +424,10 @@ export const checkinActivityEquipment = async (
     }
   });
 
+  // Update activity date
+  const activityRef = doc(db, 'activities', activity.id);
+  batch.update(activityRef, { date: new Date().toISOString() });
+
   try {
     await batch.commit();
     console.log("Check-in הושלם בהצלחה!");
@@ -440,7 +454,8 @@ export const removeItemFromActivity = async (activityId: string, itemId: string)
     // 1. Remove from activity
     batch.update(activityRef, {
       equipmentRequiredIds: arrayRemove(itemId),
-      equipmentMissingIds: arrayRemove(itemId)
+      equipmentMissingIds: arrayRemove(itemId),
+      date: new Date().toISOString() // Update date
     });
 
     // 2. Clear from item
@@ -647,7 +662,10 @@ export const bulkAssignItemsToActivity = async (itemIds: string[], targetActivit
     const updatedList = Array.from(newSet);
 
     const batch = writeBatch(db);
-    batch.update(activityRef, { equipmentRequiredIds: updatedList });
+    batch.update(activityRef, {
+      equipmentRequiredIds: updatedList,
+      date: new Date().toISOString() // Update date
+    });
 
     // Update items
     addedIds.forEach(id => {

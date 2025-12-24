@@ -15,9 +15,9 @@ function ActivityFormPage() {
   const { activityId } = useParams<{ activityId: string }>();
   const navigate = useNavigate();
   const { activities, users, isLoading } = useDatabase();
-  
+
   const isEditMode = !!activityId;
-  
+
   const [formData, setFormData] = useState<ActivityFormData>({
     name: '',
     managerUserId: '',
@@ -43,7 +43,7 @@ function ActivityFormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // ולידציה בסיסית
     if (!formData.name || !formData.managerUserId || !formData.date) {
       alert("אנא מלא את כל השדות.");
@@ -82,19 +82,19 @@ function ActivityFormPage() {
         <form id="add-activity-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="name">שם הפעילות</label>
-            <input 
-              type="text" 
-              id="name" 
-              placeholder="לדוגמה: אימון בלשב" 
+            <input
+              type="text"
+              id="name"
+              placeholder="לדוגמה: אימון בלשב"
               value={formData.name}
               onChange={handleChange}
-              required 
+              required
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="managerUserId">אחראי משימה</label>
-            <select 
+            <select
               id="managerUserId"
               value={formData.managerUserId}
               onChange={handleChange}
@@ -107,16 +107,6 @@ function ActivityFormPage() {
             </select>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="date">תאריך הפעילות</label>
-            <input 
-              type="date" 
-              id="date"
-              value={formData.date}
-              onChange={handleChange}
-              required 
-            />
-          </div>
 
           <button type="submit" className="btn-submit">
             {isEditMode ? 'שמור שינויים' : 'שמור פעילות'}

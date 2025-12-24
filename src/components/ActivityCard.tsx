@@ -13,13 +13,13 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
   const { users } = useDatabase();
 
   const manager = users.find(u => u.uid === activity.managerUserId);
-  const date = new Date(activity.date).toLocaleDateString('he-IL', { 
-    day: '2-digit', month: 'short', year: 'numeric' 
+  const date = new Date(activity.date).toLocaleDateString('he-IL', {
+    day: '2-digit', month: 'short', year: 'numeric'
   });
-  
+
   const total = activity.equipmentRequiredIds.length + activity.equipmentMissingIds.length;
   const available = activity.equipmentRequiredIds.length;
-  
+
   const statusClass = (available < total) ? 'status-red' : 'status-green';
   const statusText = `${available}/${total} פריטים כשירים`;
 
@@ -28,7 +28,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
       <div className="activity-card-header">
         <div>
           <h3 className="activity-card-title">{activity.name}</h3>
-          <div className="activity-card-date">תאריך: {date}</div>
+          <div className="activity-card-date">עדכון אחרון: {date}</div>
           <div className="activity-card-person">אחראי: {manager?.displayName || '...'}</div>
         </div>
       </div>
