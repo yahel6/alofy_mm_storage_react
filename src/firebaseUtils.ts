@@ -1,5 +1,4 @@
-// src/firebaseUtils.ts
-import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove, query, where, getDocs } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import type { EquipmentItem, Activity, Warehouse } from './types';
 
@@ -570,7 +569,6 @@ export const bulkUpdateStatus = async (itemIds: string[], newStatus: EquipmentSt
 /**
  * העברת פריטים למחסן אחר
  */
-import { query, where, getDocs } from 'firebase/firestore'; // Ensure imports
 
 /**
  * העברת פריטים למחסן אחר (כולל מיזוג חכם)
@@ -602,12 +600,16 @@ export const bulkMoveItemsToWarehouse = async (itemIds: string[], targetWarehous
     for (const item of movedItems) {
       if (!item) continue;
 
-      const q = query(
+      // Logic: Only match activity ID if status is 'loaned'
+      const normalizedName = (item.name || "").trim();
+      const normalizedCategory = item.category || null;
+
+      let q = query(
         itemsRef,
         where('warehouseId', '==', targetWarehouseId),
-        where('name', '==', item.name),
+        where('name', '==', normalizedName),
         where('status', '==', item.status),
-        where('category', '==', item.category || null),
+        where('category', '==', normalizedCategory),
         where('assignedActivityId', '==', item.assignedActivityId || null)
       );
 
@@ -619,10 +621,7 @@ export const bulkMoveItemsToWarehouse = async (itemIds: string[], targetWarehous
         const targetItem = targetItemDoc.data();
         const newQuantity = (targetItem.quantity || 1) + (item.quantity || 1);
 
-        // Update target item
         batch.update(targetItemDoc.ref, { quantity: newQuantity });
-
-        // Delete source item (since it merged)
         batch.delete(doc(db, 'equipment', item.id));
 
         console.log(`פריט ${item.name} מוזג עם פריט קיים ${targetItemDoc.id}`);
@@ -754,6 +753,7 @@ export const checkForMerge = async (itemId: string) => {
     const normalizedActivityId = item.assignedActivityId || null;
 
     // Query for identical items in the same warehouse
+    // STRICT MATCH on Activity ID
     const q = query(
       collection(db, 'equipment'),
       where('warehouseId', '==', item.warehouseId),

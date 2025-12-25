@@ -64,38 +64,12 @@ function WarehouseDetailsPage() {
   };
 
   const toggleItemSelection = (itemId: string) => {
-    // If selecting (not unselecting)
-    if (!selectedItemIds.has(itemId)) {
-      const item = equipment.find(e => e.id === itemId);
-      if (item && item.quantity && item.quantity > 1) {
-        setSplitCandidate(item);
-        return;
-      }
-    }
     globalToggleItemSelection(scopeId, itemId);
   };
 
   const handleSplitConfirm = async (quantity: number) => {
     if (!splitCandidate) return;
 
-    // CASE 1: Selection Mode split (split-on-selection)
-    if (isSelectionMode) {
-      const originalQuantity = splitCandidate.quantity || 1;
-      if (quantity < originalQuantity) {
-        // Split and select NEW item
-        const newItemId = await splitItem(splitCandidate.id, quantity, {});
-        if (newItemId) {
-          globalToggleItemSelection(scopeId, newItemId);
-        }
-      } else {
-        // Just select full item
-        globalToggleItemSelection(scopeId, splitCandidate.id);
-      }
-      setSplitCandidate(null);
-      return;
-    }
-
-    // CASE 2: Regular Mode split (triggered from single-item bulk action dropdown)
     const originalQuantity = splitCandidate.quantity || 1;
     if (quantity < originalQuantity) {
       const newItemId = await splitItem(splitCandidate.id, quantity, {});
@@ -141,6 +115,16 @@ function WarehouseDetailsPage() {
     if (selectedItemIds.size === 0) return;
 
     const ids = Array.from(selectedItemIds);
+
+    // If only ONE item is selected and it has quantity > 1, prompt for split
+    if (ids.length === 1) {
+      const item = equipment.find(e => e.id === ids[0]);
+      if (item && item.quantity && item.quantity > 1) {
+        setSplitCandidate(item);
+        return; // handleSplitConfirm will continue
+      }
+    }
+
     await performActionOnIds(ids);
   };
 
@@ -212,70 +196,66 @@ function WarehouseDetailsPage() {
   };
 
   const renderItemOrGroup = (itemOrGroup: EquipmentItem[]) => {
-    // If single item, render normally
-    if (itemOrGroup.length === 1) {
-      const item = itemOrGroup[0];
-      return (
-        <EquipmentItemRow
-          key={item.id}
-          item={item}
-          onClick={() => handleItemClick(item)}
-          isSelectable={isSelectionMode}
-          isSelected={selectedItemIds.has(item.id)}
-          onToggle={() => toggleItemSelection(item.id)}
-          onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
-        />
-      );
-    }
+    // 1. Group within this name-group by (Status + Category + assignedActivityId + loanedToUserId)
+    // BUT user says "don't separate when reserved". So for display purposes, we IGNORE reservation if NOT loaned.
+    const displayGroups: { [key: string]: { items: EquipmentItem[], quantity: number } } = {};
 
-    // If multiple variants
-    // We render them "together".
-    // Design: A container with a shared border? or just indentation?
-    // User said: "displayed together under the same item but as two separate rows and written the difference somehow".
-    // Let's render them as a list, but maybe with a subtle connector.
-    // Or we can treat the FIRST item as the "Main" appearance (if mostly identical) and others below.
-    // But statuses differ.
+    itemOrGroup.forEach(item => {
+      // Logic: Group by (Status + Category + loanedToUserId + assignedActivityId)
+      // BUT if status is NOT loaned, we treat assignedActivityId as null for grouping.
+      const statusKey = item.status === 'loaned' ? `loaned-${item.loanedToUserId || 'null'}-${item.assignedActivityId || 'null'}` : `other-${item.status}`;
+      const key = `${statusKey}-${item.category || 'none'}`;
 
-    // Let's try a visual grouping: A boxed container for the name.
-    const first = itemOrGroup[0];
-    const totalQty = itemOrGroup.reduce((sum, it) => sum + (it.quantity || 1), 0);
+      if (!displayGroups[key]) {
+        displayGroups[key] = { items: [], quantity: 0 };
+      }
+      displayGroups[key].items.push(item);
+      displayGroups[key].quantity += (item.quantity || 1);
+    });
 
     return (
-      <div key={`group-${first.name}`} style={{
-        marginBottom: '10px',
-        border: '1px solid #444',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        background: 'rgba(255,255,255,0.03)'
+      <div key={`group-${itemOrGroup[0].name}`} style={{
+        marginBottom: '1px'
       }}>
-        <div style={{
-          padding: '8px 12px',
-          background: 'rgba(255,255,255,0.05)',
-          borderBottom: '1px solid #444',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          display: 'flex',
-          justifyContent: 'space-between',
-          color: '#ddd'
-        }}>
-          <span>{first.name}</span>
-          <span style={{ fontSize: '12px', opacity: 0.7 }}>סה״כ: {totalQty}</span>
-        </div>
-        <div>
-          {itemOrGroup.map((item) => (
-            <EquipmentItemRow
-              key={item.id}
-              item={item}
-              onClick={() => handleItemClick(item)}
-              isSelectable={isSelectionMode}
-              isSelected={selectedItemIds.has(item.id)}
-              onToggle={() => toggleItemSelection(item.id)}
-              onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
-            // Add some visual style to show it's a variant? 
-            // The Row itself is fine. Maybe strict no border?
-            />
-          ))}
-        </div>
+        {Object.entries(displayGroups).map(([key, group], idx) => {
+          const first = group.items[0];
+          const allIds = group.items.map(i => i.id);
+          const isSelected = allIds.every(id => selectedItemIds.has(id));
+
+          // Create a virtual item for the row display
+          const virtualItem = {
+            ...first,
+            quantity: group.quantity
+          };
+
+          return (
+            <div
+              key={key}
+              style={{
+                borderRight: idx > 0 ? '3px solid rgba(var(--action-color-rgb), 0.3)' : 'none',
+                marginRight: idx > 0 ? '4px' : '0',
+                paddingRight: idx > 0 ? '4px' : '0',
+              }}
+            >
+              <EquipmentItemRow
+                item={virtualItem}
+                onClick={() => handleItemClick(first)}
+                isSelectable={isSelectionMode}
+                isSelected={isSelected}
+                // isIndeterminate={isPartial} // TODO: Update Row if needed
+                onToggle={() => {
+                  const targetState = !isSelected;
+                  allIds.forEach(id => {
+                    if (selectedItemIds.has(id) !== targetState) {
+                      globalToggleItemSelection(scopeId, id);
+                    }
+                  });
+                }}
+                onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
+              />
+            </div>
+          );
+        })}
       </div>
     );
   };

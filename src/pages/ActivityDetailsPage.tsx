@@ -218,74 +218,64 @@ function ActivityDetailsPage() {
   };
 
   const renderItemOrGroup = (itemOrGroup: EquipmentItem[]) => {
-    if (itemOrGroup.length === 1) {
-      const item = itemOrGroup[0];
-      // Determine click handler based on where this item came from (missing vs assigned)
-      // Since this function is generic, we might need a flag or contextual handler?
-      // Actually, 'renderItems' loop usually knows the context.
-      // But here we are separating Assigned vs Missing lists.
-      // We can assume the caller passes the right onClick via a prop wrapper? No, this is internal.
+    const displayGroups: { [key: string]: { items: EquipmentItem[], quantity: number } } = {};
 
-      // Workaround: We can check if item is in Missing vs Assigned.
-      // Or duplicate calls for Assigned vs Missing lists.
+    itemOrGroup.forEach(item => {
+      const statusKey = item.status === 'loaned' ? `loaned-${item.loanedToUserId || 'null'}` : `other-${item.status}`;
+      const key = `${statusKey}-${item.category || 'none'}`;
 
-      const isMissing = finalMissingItems.some(i => i.id === item.id);
-      const onClick = isMissing ? () => handleGapItemClick(item) : () => handleItemClick(item);
+      if (!displayGroups[key]) {
+        displayGroups[key] = { items: [], quantity: 0 };
+      }
+      displayGroups[key].items.push(item);
+      displayGroups[key].quantity += (item.quantity || 1);
+    });
 
-      return (
-        <EquipmentItemRow
-          key={item.id}
-          item={item}
-          onClick={onClick}
-          isSelectable={isSelectionMode}
-          isSelected={selectedItemIds.has(item.id)}
-          onToggle={() => toggleItemSelection(item.id)}
-        />
-      );
-    }
-
-    const first = itemOrGroup[0];
-    const totalQty = itemOrGroup.reduce((sum, it) => sum + (it.quantity || 1), 0);
-    const isMissingGroup = finalMissingItems.some(i => i.id === first.id);
+    const isMissingGroup = finalMissingItems.some(i => i.id === itemOrGroup[0].id);
 
     return (
-      <div key={`group-${first.name}`} style={{
-        marginBottom: '10px',
-        border: isMissingGroup ? '1px solid #ff4444' : '1px solid #444', // Red border for missing gaps?
-        borderRadius: '8px',
-        overflow: 'hidden',
-        background: 'rgba(255,255,255,0.03)'
+      <div key={`group-${itemOrGroup[0].name}`} style={{
+        marginBottom: '1px'
       }}>
-        <div style={{
-          padding: '8px 12px',
-          background: 'rgba(255,255,255,0.05)',
-          borderBottom: '1px solid #444',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          display: 'flex',
-          justifyContent: 'space-between',
-          color: isMissingGroup ? '#ff4444' : '#ddd'
-        }}>
-          <span>{first.name}</span>
-          <span style={{ fontSize: '12px', opacity: 0.7 }}>סה״כ: {totalQty}</span>
-        </div>
-        <div>
-          {itemOrGroup.map(item => {
-            const isMissing = finalMissingItems.some(i => i.id === item.id);
-            const onClick = isMissing ? () => handleGapItemClick(item) : () => handleItemClick(item);
+        {Object.entries(displayGroups).map(([key, group], idx) => {
+          const first = group.items[0];
+          const allIds = group.items.map(i => i.id);
+          const isSelected = allIds.every(id => selectedItemIds.has(id));
 
-            return (
+          const isMissing = finalMissingItems.some(i => i.id === first.id);
+          const onClick = isMissing ? () => handleGapItemClick(first) : () => handleItemClick(first);
+
+          const virtualItem = {
+            ...first,
+            quantity: group.quantity
+          };
+
+          return (
+            <div
+              key={key}
+              style={{
+                borderRight: idx > 0 ? (isMissingGroup ? '3px solid #ff4444' : '3px solid rgba(var(--action-color-rgb), 0.3)') : 'none',
+                marginRight: idx > 0 ? '4px' : '0',
+                paddingRight: idx > 0 ? '4px' : '0',
+              }}
+            >
               <EquipmentItemRow
-                key={item.id}
-                item={item}
+                item={virtualItem}
                 onClick={onClick}
                 isSelectable={isSelectionMode}
-                isSelected={selectedItemIds.has(item.id)}
-                onToggle={() => toggleItemSelection(item.id)}
+                isSelected={isSelected}
+                onToggle={() => {
+                  const targetState = !isSelected;
+                  allIds.forEach(id => {
+                    if (selectedItemIds.has(id) !== targetState) {
+                      globalToggleItemSelection(scopeId, id);
+                    }
+                  });
+                }}
               />
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     );
   };
