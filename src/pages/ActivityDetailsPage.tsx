@@ -10,6 +10,7 @@ import ActivityOptionsModal from '../components/ActivityOptionsModal';
 import ResolveGapModal from '../components/ResolveGapModal';
 import StatusModal from '../components/StatusModal';
 import ValidationModal from '../components/ValidationModal';
+import FilterChips from '../components/FilterChips';
 import {
   checkoutActivityEquipment,
   checkinActivityEquipment,
@@ -18,6 +19,8 @@ import {
 } from '../firebaseUtils';
 import type { EquipmentItem } from '../types';
 import './ActivityDetailsPage.css';
+
+type FilterType = 'all' | 'validate' | 'broken' | 'loaned';
 
 function ActivityDetailsPage() {
   const { activityId } = useParams<{ activityId: string }>();
@@ -41,6 +44,12 @@ function ActivityDetailsPage() {
   const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null);
   const [validationModalItem, setValidationModalItem] = useState<EquipmentItem | null>(null);
 
+  // Enhancement State
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
+
   const toggleSelectionMode = () => {
     globalToggleSelectionMode(scopeId);
   };
@@ -63,32 +72,28 @@ function ActivityDetailsPage() {
     globalToggleSelectionMode(scopeId); // Exit mode
   };
 
-  const { activity, finalAssignedItems, finalMissingItems } = useMemo(() => {
+  const { activity, finalAssignedItems, finalMissingItems, availableCategories } = useMemo(() => {
     const activity = activities.find(act => act.id === activityId);
     if (!activity) {
-      return { activity: null, finalAssignedItems: [], finalMissingItems: [] };
+      return { activity: null, finalAssignedItems: [], finalMissingItems: [], availableCategories: [] };
     }
 
-    const finalAssignedItems: EquipmentItem[] = [];
-    const finalMissingItems: EquipmentItem[] = [];
+    let assigned: EquipmentItem[] = [];
+    let missing: EquipmentItem[] = [];
+    const categoriesSet = new Set<string>();
 
     // א. בדוק פריטים שמשויכים כ"נדרשים"
     activity.equipmentRequiredIds.forEach(itemId => {
       const item = equipment.find(e => e.id === itemId);
       if (item) {
-        // Validation Mode Check: Skip if verified
-        if (isValidationMode && sessionVerifiedIds.has(item.id)) return;
-
-        // ב. התיקון: פריט נחשב "משויך" אם הוא פנוי, בטעינה,
-        //    או אם הוא מושאל ספציפית לאחראי הפעילות הזו.
+        if (item.category) categoriesSet.add(item.category);
         if (item.status === 'available' ||
           item.status === 'charging' ||
           (item.status === 'loaned' && item.loanedToUserId === activity.managerUserId)
         ) {
-          finalAssignedItems.push(item);
+          assigned.push(item);
         } else {
-          // הפריט מקולקל, בתיקון, או מושאל למישהו אחר - זהו פער אמיתי.
-          finalMissingItems.push(item);
+          missing.push(item);
         }
       }
     });
@@ -97,25 +102,66 @@ function ActivityDetailsPage() {
     activity.equipmentMissingIds.forEach(itemId => {
       const item = equipment.find(e => e.id === itemId);
       if (item) {
-        // Validation Mode Check: Skip if verified
-        if (isValidationMode && sessionVerifiedIds.has(item.id)) return;
-
-        // הרץ את אותה לוגיקה שוב, למקרה שהסטטוס של הפריט השתנה (למשל, חזר מתיקון)
+        if (item.category) categoriesSet.add(item.category);
         if (item.status === 'available' ||
           item.status === 'charging' ||
           (item.status === 'loaned' && item.loanedToUserId === activity.managerUserId)
         ) {
-          // הפריט כבר לא חסר! הצג אותו כמשויך.
-          finalAssignedItems.push(item);
+          assigned.push(item);
         } else {
-          // הפריט עדיין חסר
-          finalMissingItems.push(item);
+          missing.push(item);
         }
       }
     });
 
-    return { activity, finalAssignedItems, finalMissingItems };
-  }, [activityId, activities, equipment, isValidationMode, sessionVerifiedIds]);
+    // Filtering logic
+    const applyFilters = (items: EquipmentItem[]) => {
+      let filtered = items;
+
+      if (isValidationMode) {
+        filtered = filtered.filter(item => !sessionVerifiedIds.has(item.id));
+      }
+
+      if (activeFilter !== 'all') {
+        const today = new Date();
+        const validationThreshold = new Date(new Date().setDate(today.getDate() - 7));
+        switch (activeFilter) {
+          case 'validate':
+            filtered = filtered.filter(item => new Date(item.lastCheckDate) < validationThreshold && item.status === 'available');
+            break;
+          case 'broken':
+            filtered = filtered.filter(item => item.status === 'broken' || item.status === 'repair');
+            break;
+          case 'loaned':
+            filtered = filtered.filter(item => item.status === 'loaned');
+            break;
+        }
+      }
+
+      if (categoryFilter) {
+        filtered = filtered.filter(item => item.category === categoryFilter);
+      }
+
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(item => {
+          const matchesName = item.name.toLowerCase().includes(query);
+          // Find manager name if possible (using item.loanedToUserId or activity manager)
+          // Simplified: just match item name for now as per Warehouse logic
+          return matchesName;
+        });
+      }
+
+      return filtered;
+    };
+
+    return {
+      activity,
+      finalAssignedItems: applyFilters(assigned),
+      finalMissingItems: applyFilters(missing),
+      availableCategories: Array.from(categoriesSet).sort()
+    };
+  }, [activityId, activities, equipment, isValidationMode, sessionVerifiedIds, activeFilter, categoryFilter, searchQuery]);
 
   const isActivityCheckedOut = useMemo(() => {
     if (!activity) return false;
@@ -217,6 +263,16 @@ function ActivityDetailsPage() {
     return groups;
   };
 
+  const groupByCategory = (items: EquipmentItem[]) => {
+    const groups: { [key: string]: EquipmentItem[] } = {};
+    items.forEach(item => {
+      const cat = item.category || 'ללא קטגוריה';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(item);
+    });
+    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  };
+
   const renderItemOrGroup = (itemOrGroup: EquipmentItem[]) => {
     const displayGroups: { [key: string]: { items: EquipmentItem[], quantity: number } } = {};
 
@@ -287,7 +343,6 @@ function ActivityDetailsPage() {
         onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
       />
 
-      {/* Validation Mode Banner */}
       {isValidationMode && (
         <div style={{
           background: 'rgba(52, 199, 89, 0.2)',
@@ -317,6 +372,61 @@ function ActivityDetailsPage() {
           </button>
         </div>
       )}
+
+      {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
+
+      <div style={{ padding: '0 16px 10px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          type="text"
+          placeholder="חפש פריט..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{
+            flex: 1,
+            padding: '10px',
+            borderRadius: '8px',
+            border: '1px solid #444',
+            background: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            minWidth: '200px'
+          }}
+        />
+
+        {availableCategories.length > 0 && (
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            style={{
+              padding: '10px',
+              borderRadius: '8px',
+              border: '1px solid #444',
+              background: 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              minWidth: '120px'
+            }}
+          >
+            <option value="">כל הקטגוריות</option>
+            {availableCategories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        )}
+
+        <button
+          onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
+          style={{
+            padding: '10px 16px',
+            borderRadius: '8px',
+            border: isGroupedByCategory ? '2px solid var(--action-color)' : '1px solid #444',
+            background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
+            color: isGroupedByCategory ? 'var(--action-color)' : 'var(--text-primary)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
+        </button>
+      </div>
 
       <div className="details-card">
         {/* ... (card title) ... */}
@@ -370,9 +480,20 @@ function ActivityDetailsPage() {
 
           {/* Grouped Missing Items */}
           {finalMissingItems.length > 0 && (
-            Object.values(groupByName(finalMissingItems))
-              .sort((a, b) => a[0].name.localeCompare(b[0].name))
-              .map(group => renderItemOrGroup(group))
+            isGroupedByCategory ? (
+              groupByCategory(finalMissingItems).map(([categoryName, items]) => (
+                <div key={`missing-${categoryName}`}>
+                  <h5 className="category-header">{categoryName}</h5>
+                  {Object.values(groupByName(items))
+                    .sort((a, b) => a[0].name.localeCompare(b[0].name))
+                    .map(group => renderItemOrGroup(group))}
+                </div>
+              ))
+            ) : (
+              Object.values(groupByName(finalMissingItems))
+                .sort((a, b) => a[0].name.localeCompare(b[0].name))
+                .map(group => renderItemOrGroup(group))
+            )
           )}
 
           {/* Grouped Assigned Items */}
@@ -382,9 +503,20 @@ function ActivityDetailsPage() {
               לא שוריין ציוד לפעילות זו.
             </p>
           ) : (
-            Object.values(groupByName(finalAssignedItems))
-              .sort((a, b) => a[0].name.localeCompare(b[0].name))
-              .map(group => renderItemOrGroup(group))
+            isGroupedByCategory ? (
+              groupByCategory(finalAssignedItems).map(([categoryName, items]) => (
+                <div key={`assigned-${categoryName}`}>
+                  <h5 className="category-header">{categoryName}</h5>
+                  {Object.values(groupByName(items))
+                    .sort((a, b) => a[0].name.localeCompare(b[0].name))
+                    .map(group => renderItemOrGroup(group))}
+                </div>
+              ))
+            ) : (
+              Object.values(groupByName(finalAssignedItems))
+                .sort((a, b) => a[0].name.localeCompare(b[0].name))
+                .map(group => renderItemOrGroup(group))
+            )
           )}
         </div>
       </div>

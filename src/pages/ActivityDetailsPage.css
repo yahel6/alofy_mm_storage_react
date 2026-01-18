@@ -64,6 +64,15 @@
     margin-bottom: 8px;
 }
 
+.category-header {
+    background: var(--input-bg-color);
+    color: var(--action-color);
+    padding: 6px 12px;
+    margin: 8px -16px 4px -16px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
 
 /* פריט סטטוס (משוריין או חסר) */
 
