@@ -502,7 +502,7 @@ function ActivityDetailsPage() {
 
         {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
 
-        <div style={{ padding: '0 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ padding: '0 8px', display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             type="text"
             placeholder="חפש פריט..."
@@ -510,12 +510,13 @@ function ActivityDetailsPage() {
             onChange={e => setSearchQuery(e.target.value)}
             style={{
               flex: 1,
-              padding: '10px',
+              padding: '8px',
               borderRadius: '8px',
               border: '1px solid #444',
               background: 'var(--bg-secondary)',
               color: 'var(--text-primary)',
-              minWidth: '200px'
+              minWidth: '120px',
+              fontSize: '14px'
             }}
           />
 
@@ -524,12 +525,13 @@ function ActivityDetailsPage() {
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value)}
               style={{
-                padding: '10px',
+                padding: '8px',
                 borderRadius: '8px',
                 border: '1px solid #444',
                 background: 'var(--bg-secondary)',
                 color: 'var(--text-primary)',
-                minWidth: '120px'
+                minWidth: '80px',
+                fontSize: '14px'
               }}
             >
               <option value="">כל הקטגוריות</option>
@@ -542,8 +544,9 @@ function ActivityDetailsPage() {
           <button
             onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
             style={{
-              padding: '10px 16px',
+              padding: '8px 12px',
               borderRadius: '8px',
+              fontSize: '14px',
               border: isGroupedByCategory ? '2px solid var(--action-color)' : '1px solid #444',
               background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
               color: isGroupedByCategory ? 'var(--action-color)' : 'var(--text-primary)',
@@ -553,6 +556,40 @@ function ActivityDetailsPage() {
           >
             {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
           </button>
+
+          <button
+            onClick={toggleSelectionMode}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              border: isSelectionMode ? '2px solid var(--action-color)' : '1px solid #444',
+              background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
+              color: isSelectionMode ? 'var(--action-color)' : 'var(--text-primary)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {isSelectionMode ? 'בטל' : 'בחר'}
+          </button>
+
+          {!isValidationMode && (
+            <button
+              onClick={() => startSession(scopeId)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                border: '1px solid #444',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ווידוא
+            </button>
+          )}
         </div>
       </div>
 
@@ -560,40 +597,7 @@ function ActivityDetailsPage() {
         {/* ... (card title) ... */}
         <h3 className="card-title">
           <span>{`סטטוס פעילות (${totalAssigned} / ${totalItems})`}</span>
-          <div style={{ display: 'flex', gap: '8px' }}>
-
-            {/* Select Button */}
-            <button
-              onClick={toggleSelectionMode}
-              style={{
-                background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'transparent',
-                border: isSelectionMode ? '2px solid var(--action-color)' : '1px solid #444',
-                color: isSelectionMode ? 'var(--action-color)' : 'var(--text-primary)',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
-            >
-              {isSelectionMode ? 'בטל בחירה' : 'בחר'}
-            </button>
-
-            {!isValidationMode && (
-              <button
-                onClick={() => startSession(scopeId)}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #444',
-                  color: 'var(--text-primary)',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                מצב ווידוא
-              </button>
-            )}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span className="card-title-action" onClick={handleEditEquipment}>
               ערוך
             </span>

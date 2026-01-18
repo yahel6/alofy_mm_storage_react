@@ -190,12 +190,12 @@
 
 .page-content {
     flex-grow: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     /* זה החשוב - מונע גלילה אופקית בזמן אנימציה */
     padding-bottom: 120px;
     position: relative;
     /* חובה עבור אנימציות 'absolute' */
+    overscroll-behavior: none;
 }
 
 
