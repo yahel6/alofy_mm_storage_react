@@ -15,9 +15,13 @@ import {
   checkoutActivityEquipment,
   checkinActivityEquipment,
   removeItemFromActivity,
-  bulkValidateItems
+  bulkValidateItems,
+  bulkUpdateCategory,
+  bulkUpdateStatus,
+  splitItem
 } from '../firebaseUtils';
 import type { EquipmentItem } from '../types';
+import QuantityModal from '../components/QuantityModal';
 import './ActivityDetailsPage.css';
 
 type FilterType = 'all' | 'validate' | 'broken' | 'loaned';
@@ -50,8 +54,15 @@ function ActivityDetailsPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
 
+  // Bulk Action Modals State
+  const [bulkAction, setBulkAction] = useState<'status' | 'category' | null>(null);
+  const [tempSelection, setTempSelection] = useState<string>('');
+  const [splitCandidate, setSplitCandidate] = useState<EquipmentItem | null>(null);
+
   const toggleSelectionMode = () => {
     globalToggleSelectionMode(scopeId);
+    setBulkAction(null);
+    setTempSelection('');
   };
 
   const toggleItemSelection = (itemId: string) => {
@@ -60,16 +71,74 @@ function ActivityDetailsPage() {
 
   const handleBulkValidate = async () => {
     const ids = Array.from(selectedItemIds);
-    await bulkValidateItems(ids);
-
     if (isValidationMode) {
+      await bulkValidateItems(ids);
       ids.forEach(id => verifyItem(scopeId, id));
     } else {
-      alert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
+      if (window.confirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`)) {
+        await bulkValidateItems(ids);
+        alert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
+      }
     }
 
     clearSelection(scopeId);
     globalToggleSelectionMode(scopeId); // Exit mode
+  };
+
+  const handleSplitConfirm = async (quantity: number) => {
+    if (!splitCandidate) return;
+
+    const originalQuantity = splitCandidate.quantity || 1;
+    if (quantity < originalQuantity) {
+      const newItemId = await splitItem(splitCandidate.id, quantity, {});
+      if (newItemId) {
+        await performActionOnIds([newItemId]);
+      }
+    } else {
+      await performActionOnIds([splitCandidate.id]);
+    }
+
+    setSplitCandidate(null);
+  };
+
+  const performActionOnIds = async (ids: string[]) => {
+    let success = false;
+    try {
+      if (bulkAction === 'category') {
+        success = await bulkUpdateCategory(ids, tempSelection || null);
+      } else if (bulkAction === 'status') {
+        success = await bulkUpdateStatus(ids, tempSelection as any);
+      }
+    } catch (err) {
+      console.error("Error in performActionOnIds:", err);
+      success = false;
+    }
+
+    if (success) {
+      alert('הפעולה בוצעה בהצלחה');
+      clearSelection(scopeId);
+      globalToggleSelectionMode(scopeId); // Exit mode
+      setBulkAction(null);
+      setTempSelection('');
+    } else {
+      alert('אירעה שגיאה בביצוע הפעולה');
+    }
+  };
+
+  const executeBulkAction = async () => {
+    if (selectedItemIds.size === 0) return;
+
+    const ids = Array.from(selectedItemIds);
+
+    if (ids.length === 1) {
+      const item = equipment.find(e => e.id === ids[0]);
+      if (item && item.quantity && item.quantity > 1) {
+        setSplitCandidate(item);
+        return;
+      }
+    }
+
+    await performActionOnIds(ids);
   };
 
   const { activity, finalAssignedItems, finalMissingItems, availableCategories } = useMemo(() => {
@@ -253,12 +322,13 @@ function ActivityDetailsPage() {
   const totalAssigned = finalAssignedItems.length;
   const totalItems = activity.equipmentRequiredIds.length + activity.equipmentMissingIds.length;
 
-  // Helper to group by name
+  // Helper to group by name and status for aggregated view
   const groupByName = (items: EquipmentItem[]) => {
-    const groups: { [name: string]: EquipmentItem[] } = {};
+    const groups: { [key: string]: EquipmentItem[] } = {};
     items.forEach(item => {
-      if (!groups[item.name]) groups[item.name] = [];
-      groups[item.name].push(item);
+      const key = `${item.name}-${item.status}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
     });
     return groups;
   };
@@ -271,6 +341,51 @@ function ActivityDetailsPage() {
       groups[cat].push(item);
     });
     return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  };
+
+  const renderBulkActionModal = () => {
+    if (!bulkAction) return null;
+
+    let title = '';
+    let content = null;
+
+    if (bulkAction === 'category') {
+      title = 'עדכון קטגוריה';
+      content = (
+        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
+          <option value="">בחר קטגוריה...</option>
+          {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+          <option value="">(ללא קטגוריה)</option>
+        </select>
+      );
+    } else if (bulkAction === 'status') {
+      title = 'שינוי סטטוס';
+      content = (
+        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
+          <option value="">בחר סטטוס...</option>
+          <option value="available">זמין</option>
+          <option value="charging">בטעינה</option>
+          <option value="broken">תקול</option>
+          <option value="repair">בתיקון</option>
+          <option value="loaned">מושאל</option>
+        </select>
+      );
+    }
+
+    return (
+      <div className="modal-overlay active" onClick={() => setBulkAction(null)}>
+        <div className="modal-container" onClick={e => e.stopPropagation()}>
+          <h3 className="modal-title">{title}</h3>
+          <div style={{ margin: '20px 0' }}>
+            {content}
+          </div>
+          <div className="modal-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '8px' }} onClick={() => setBulkAction(null)}>ביטול</button>
+            <button className="btn-primary" style={{ padding: '8px 16px', margin: 0, width: 'auto' }} disabled={!tempSelection && bulkAction !== 'category'} onClick={executeBulkAction}>אישור</button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const renderItemOrGroup = (itemOrGroup: EquipmentItem[]) => {
@@ -527,8 +642,8 @@ function ActivityDetailsPage() {
         `}</style>
       )}
 
-      {/* --- BULK ACTIONS TOOLBAR (Activity: Only Validate) --- */}
-      {isSelectionMode && (
+      {/* --- BULK ACTIONS TOOLBAR --- */}
+      {isSelectionMode && !bulkAction && (
         <div style={{
           position: 'fixed', bottom: 'calc(75px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)',
           background: '#222', padding: '12px', borderRadius: '16px',
@@ -545,19 +660,40 @@ function ActivityDetailsPage() {
             <button
               className="bulk-btn"
               onClick={handleBulkValidate}
-              style={{
-                background: '#444', color: 'white', border: 'none', padding: '8px 12px',
-                borderRadius: '8px', fontSize: '13px', whiteSpace: 'nowrap', cursor: 'pointer',
-                flexGrow: 1
-              }}
+              style={{ flexGrow: 0 }}
             >
               ✅ ווידוא
             </button>
+            {!isValidationMode && (
+              <>
+                <button
+                  className="bulk-btn"
+                  onClick={() => { setTempSelection(''); setBulkAction('status'); }}
+                >
+                  🔄 סטטוס
+                </button>
+                <button
+                  className="bulk-btn"
+                  onClick={() => { setTempSelection(''); setBulkAction('category'); }}
+                >
+                  🏷️ קטגוריה
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* ... (action buttons) ... */}
+      {renderBulkActionModal()}
+
+      {splitCandidate && (
+        <QuantityModal
+          onCancel={() => setSplitCandidate(null)}
+          onConfirm={handleSplitConfirm}
+          maxQuantity={splitCandidate.quantity || 1}
+          title={`פיצול פריט: ${splitCandidate.name}`}
+        />
+      )}
       {!isValidationMode && (
         <div className="action-buttons">
           {isActivityCheckedOut ? (
