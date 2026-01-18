@@ -500,7 +500,6 @@ function ActivityDetailsPage() {
           </div>
         )}
 
-        {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
 
         <div style={{ padding: '0 8px', display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
@@ -593,6 +592,8 @@ function ActivityDetailsPage() {
         </div>
       </div>
 
+      {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
+
       <div className="details-card">
         {/* ... (card title) ... */}
         <h3 className="card-title">
@@ -615,7 +616,7 @@ function ActivityDetailsPage() {
             isGroupedByCategory ? (
               groupByCategory(finalMissingItems).map(([categoryName, items]) => (
                 <div key={`missing-${categoryName}`}>
-                  <h5 className="category-header" style={{ position: 'sticky', top: '190px', zIndex: 10, background: 'var(--bg-color)' }}>{categoryName}</h5>
+                  <h5 className="category-header" style={{ position: 'sticky', top: '120px', zIndex: 10, background: 'var(--bg-color)' }}>{categoryName}</h5>
                   {Object.values(groupByName(items))
                     .sort((a, b) => a[0].name.localeCompare(b[0].name))
                     .map(group => renderItemOrGroup(group))}
@@ -638,7 +639,7 @@ function ActivityDetailsPage() {
             isGroupedByCategory ? (
               groupByCategory(finalAssignedItems).map(([categoryName, items]) => (
                 <div key={`assigned-${categoryName}`}>
-                  <h5 className="category-header" style={{ position: 'sticky', top: '190px', zIndex: 10, background: 'var(--bg-color)' }}>{categoryName}</h5>
+                  <h5 className="category-header" style={{ position: 'sticky', top: '120px', zIndex: 10, background: 'var(--bg-color)' }}>{categoryName}</h5>
                   {Object.values(groupByName(items))
                     .sort((a, b) => a[0].name.localeCompare(b[0].name))
                     .map(group => renderItemOrGroup(group))}

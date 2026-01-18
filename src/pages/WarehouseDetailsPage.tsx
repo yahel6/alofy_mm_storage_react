@@ -409,7 +409,6 @@ function WarehouseDetailsPage() {
           </div>
         )}
 
-        {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
 
         <div style={{ padding: '0 8px', display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
@@ -502,6 +501,8 @@ function WarehouseDetailsPage() {
         </div>
       </div>
 
+      {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
+
       {
         isSelectionMode && (
           <style>{`
@@ -575,7 +576,7 @@ function WarehouseDetailsPage() {
                     paddingTop: '8px',
                     paddingBottom: '8px',
                     position: 'sticky',
-                    top: '200px', // Adjusted to not overlap with main sticky header
+                    top: '120px', // Matches the shorter sticky header (HeaderNav + Controls)
                     zIndex: 10
                   }}>
                     {categoryName} ({items.length})
