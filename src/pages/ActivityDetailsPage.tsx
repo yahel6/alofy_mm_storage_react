@@ -501,94 +501,57 @@ function ActivityDetailsPage() {
         )}
 
 
-        <div style={{ padding: '0 8px', display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            type="text"
-            placeholder="חפש פריט..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '8px',
-              borderRadius: '8px',
-              border: '1px solid #444',
-              background: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
-              minWidth: '120px',
-              fontSize: '14px'
-            }}
-          />
+        <div className="header-controls-container">
+          <div className="search-row">
+            <input
+              type="text"
+              placeholder="חפש פריט..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
 
-          {availableCategories.length > 0 && (
-            <select
-              value={categoryFilter}
-              onChange={e => setCategoryFilter(e.target.value)}
-              style={{
-                padding: '8px',
-                borderRadius: '8px',
-                border: '1px solid #444',
-                background: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                minWidth: '80px',
-                fontSize: '14px'
-              }}
-            >
-              <option value="">כל הקטגוריות</option>
-              {availableCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          )}
+          <div className="actions-row">
+            {availableCategories.length > 0 && (
+              <select
+                value={categoryFilter}
+                onChange={e => setCategoryFilter(e.target.value)}
+              >
+                <option value="">קטגוריה</option>
+                {availableCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            )}
 
-          <button
-            onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              border: isGroupedByCategory ? '2px solid var(--action-color)' : '1px solid #444',
-              background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
-              color: isGroupedByCategory ? 'var(--action-color)' : 'var(--text-primary)',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
-          </button>
-
-          <button
-            onClick={toggleSelectionMode}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              border: isSelectionMode ? '2px solid var(--action-color)' : '1px solid #444',
-              background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
-              color: isSelectionMode ? 'var(--action-color)' : 'var(--text-primary)',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {isSelectionMode ? 'בטל' : 'בחר'}
-          </button>
-
-          {!isValidationMode && (
             <button
-              onClick={() => startSession(scopeId)}
+              onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
               style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                border: '1px solid #444',
-                background: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
+                border: isGroupedByCategory ? '2px solid var(--action-color)' : undefined,
+                background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
+                color: isGroupedByCategory ? 'var(--action-color)' : undefined,
               }}
             >
-              ווידוא
+              {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
             </button>
-          )}
+
+            <button
+              onClick={toggleSelectionMode}
+              style={{
+                border: isSelectionMode ? '2px solid var(--action-color)' : undefined,
+                background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
+                color: isSelectionMode ? 'var(--action-color)' : undefined,
+              }}
+            >
+              {isSelectionMode ? 'בטל' : 'בחר'}
+            </button>
+
+            {!isValidationMode && (
+              <button onClick={() => startSession(scopeId)}>
+                ווידוא
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
