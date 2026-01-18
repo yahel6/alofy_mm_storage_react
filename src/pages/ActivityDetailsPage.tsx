@@ -281,7 +281,7 @@ function ActivityDetailsPage() {
   };
 
   return (
-    <div style={{ paddingBottom: isSelectionMode ? '140px' : undefined }}>
+    <div style={{ paddingBottom: isSelectionMode ? '180px' : '60px' }}>
       <HeaderNav
         title={activity.name}
         onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
@@ -321,7 +321,7 @@ function ActivityDetailsPage() {
       <div className="details-card">
         {/* ... (card title) ... */}
         <h3 className="card-title">
-          <span>{`סטטוס פעילות (${totalAssigned}/${totalItems})`}</span>
+          <span>{`סטטוס פעילות (${totalAssigned} / ${totalItems})`}</span>
           <div style={{ display: 'flex', gap: '8px' }}>
 
             {/* Select Button */}
@@ -389,10 +389,16 @@ function ActivityDetailsPage() {
         </div>
       </div>
 
+      {isSelectionMode && (
+        <style>{`
+          .fab { bottom: calc(200px + env(safe-area-inset-bottom)) !important; }
+        `}</style>
+      )}
+
       {/* --- BULK ACTIONS TOOLBAR (Activity: Only Validate) --- */}
       {isSelectionMode && (
         <div style={{
-          position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', bottom: 'calc(75px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)',
           background: '#222', padding: '12px', borderRadius: '16px',
           boxShadow: '0 4px 24px rgba(0,0,0,0.6)', zIndex: 1000,
           width: '94%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '10px',
@@ -485,6 +491,5 @@ function ActivityDetailsPage() {
     </div>
   );
 }
-
 
 export default ActivityDetailsPage;
