@@ -251,6 +251,17 @@ function WarehouseDetailsPage() {
                     }
                   });
                 }}
+                onLongPress={() => {
+                  if (!isSelectionMode) {
+                    toggleSelectionMode();
+                    // Select items after mode is activated
+                    allIds.forEach(id => {
+                      if (!selectedItemIds.has(id)) {
+                        globalToggleItemSelection(scopeId, id);
+                      }
+                    });
+                  }
+                }}
                 onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
               />
             </div>

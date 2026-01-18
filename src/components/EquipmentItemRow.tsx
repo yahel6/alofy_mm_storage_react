@@ -1,3 +1,4 @@
+import React, { useState, useRef } from 'react';
 import type { EquipmentItem } from '../types';
 import { useDatabase } from '../contexts/DatabaseContext';
 import './EquipmentItemRow.css';
@@ -9,6 +10,7 @@ interface EquipmentItemRowProps {
   isSelected?: boolean;
   onToggle?: () => void;
   onOpenSubItems?: (item: EquipmentItem) => void;
+  onLongPress?: () => void;
 }
 
 const statusMap = {
@@ -19,8 +21,10 @@ const statusMap = {
   'loaned': { text: 'בפעילות', class: 'status-loaned' }
 };
 
-const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems }) => {
+const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems, onLongPress }) => {
   const { users } = useDatabase();
+  const timerRef = useRef<number | null>(null);
+  const [isLongPressTriggered, setIsLongPressTriggered] = useState(false);
 
   const manager = users.find(u => u.uid === item.managerUserId);
   const loanedToUser = users.find(u => u.uid === item.loanedToUserId);
@@ -36,8 +40,48 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
 
   const statusInfo = statusMap[item.status] || { text: 'לא ידוע', class: 'status-grey' };
 
+  const startPress = () => {
+    setIsLongPressTriggered(false);
+    timerRef.current = window.setTimeout(() => {
+      if (onLongPress) {
+        onLongPress();
+        setIsLongPressTriggered(true);
+      }
+    }, 600); // 600ms long press delay
+  };
+
+  const endPress = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent | React.TouchEvent) => {
+    if (isLongPressTriggered) {
+      e.stopPropagation();
+      e.preventDefault();
+      setIsLongPressTriggered(false);
+      return;
+    }
+    if (isSelectable) {
+      if (onToggle) onToggle();
+    } else {
+      onClick();
+    }
+  };
+
   return (
-    <div className="equipment-item-content" onClick={isSelectable ? undefined : onClick} style={{ display: 'flex', alignItems: 'center' }}>
+    <div
+      className="equipment-item-content"
+      style={{ display: 'flex', alignItems: 'center' }}
+      onMouseDown={startPress}
+      onMouseUp={endPress}
+      onMouseLeave={endPress}
+      onTouchStart={startPress}
+      onTouchEnd={endPress}
+      onClick={handleClick}
+    >
       {isSelectable && (
         <div
           onClick={(e) => {
@@ -54,7 +98,7 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
           />
         </div>
       )}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={isSelectable && onToggle ? onToggle : undefined}>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="equipment-details">
           <div className="equipment-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>{item.name}</span>
