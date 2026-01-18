@@ -27,16 +27,12 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
   const [isLongPressTriggered, setIsLongPressTriggered] = useState(false);
 
   const manager = users.find(u => u.uid === item.managerUserId);
-  const loanedToUser = users.find(u => u.uid === item.loanedToUserId);
 
   const checkDate = new Date(item.lastCheckDate).toLocaleDateString('he-IL', {
     day: '2-digit', month: '2-digit', year: '2-digit'
   });
 
-  let secondaryInfo = `אחראי: ${manager?.displayName || '...'} • ווידוא: ${checkDate}`;
-  if (item.status === 'loaned') {
-    secondaryInfo = `הושאל ל: ${loanedToUser?.displayName || '...'} • עד: 29/10/25`;
-  }
+  const secondaryInfo = `אחראי: ${manager?.displayName || '...'} • ווידוא: ${checkDate}`;
 
   const statusInfo = statusMap[item.status] || { text: 'לא ידוע', class: 'status-grey' };
 
@@ -107,19 +103,6 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
                 (x{item.quantity})
               </span>
             )}
-            {item.status === 'loaned' && (
-              <span style={{
-                fontSize: '11px',
-                background: '#FF9F0A22',
-                color: '#FF9F0A',
-                border: '1px solid #FF9F0A',
-                padding: '1px 6px',
-                borderRadius: '4px',
-                marginRight: '8px'
-              }}>
-                בפעילות
-              </span>
-            )}
             {/* New Button for Sub-Items */}
             {item.subItems && item.subItems.length > 0 && (
               <button
@@ -142,13 +125,14 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
               </button>
             )}
           </div>
-          <div className="equipment-secondary-info" style={{ color: item.status === 'loaned' ? 'var(--status-orange)' : undefined }}>
-            {secondaryInfo}
-          </div>
+          {item.status !== 'loaned' && (
+            <div className="equipment-secondary-info">
+              {secondaryInfo}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {/* Validation Warning */}
           {item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) && (
             <div className="validation-warning" title="נדרש ווידוא (לא נבדק ב-7 ימים האחרונים)">
               ⚠️
