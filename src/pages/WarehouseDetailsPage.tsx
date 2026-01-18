@@ -362,161 +362,167 @@ function WarehouseDetailsPage() {
 
   return (
     <div style={{ paddingBottom: isSelectionMode ? '180px' : '60px' }}>
-      <HeaderNav
-        title={warehouse.name}
-        onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
-      />
-
-      {isValidationMode && (
-        <div style={{
-          background: 'rgba(52, 199, 89, 0.2)',
-          color: '#4caf50',
-          padding: '12px',
-          textAlign: 'center',
-          fontWeight: 'bold',
-          borderBottom: '1px solid rgba(52, 199, 89, 0.4)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span>🕵️ מצב ווידוא פעיל</span>
-          <button
-            onClick={() => stopSession(scopeId)}
-            style={{
-              background: 'rgba(0,0,0,0.3)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '4px 12px',
-              fontSize: '12px',
-              cursor: 'pointer'
-            }}
-          >
-            סיים
-          </button>
-        </div>
-      )}
-
-      {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
-
-      <div style={{ padding: '0 16px 16px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          type="text"
-          placeholder="חפש פריט או שם אחראי..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          style={{
-            flex: 1,
-            padding: '10px',
-            borderRadius: '8px',
-            border: '1px solid #444',
-            background: 'var(--bg-secondary)',
-            color: 'var(--text-primary)',
-            minWidth: '200px'
-          }}
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'var(--bg-color)', paddingBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <HeaderNav
+          title={warehouse.name}
+          onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
         />
 
-        {warehouse?.categories && warehouse.categories.length > 0 && (
-          <select
-            value={categoryFilter}
-            onChange={e => setCategoryFilter(e.target.value)}
+        {isValidationMode && (
+          <div style={{
+            background: 'rgba(52, 199, 89, 0.2)',
+            color: '#4caf50',
+            padding: '12px',
+            textAlign: 'center',
+            fontWeight: 'bold',
+            borderBottom: '1px solid rgba(52, 199, 89, 0.4)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <span>🕵️ מצב ווידוא פעיל</span>
+            <button
+              onClick={() => stopSession(scopeId)}
+              style={{
+                background: 'rgba(0,0,0,0.3)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '4px 12px',
+                fontSize: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              סיים
+            </button>
+          </div>
+        )}
+
+        {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
+
+        <div style={{ padding: '0 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="חפש פריט או שם אחראי..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
             style={{
+              flex: 1,
               padding: '10px',
               borderRadius: '8px',
               border: '1px solid #444',
               background: 'var(--bg-secondary)',
               color: 'var(--text-primary)',
-              minWidth: '120px'
+              minWidth: '200px'
             }}
-          >
-            <option value="">כל הקטגוריות</option>
-            {warehouse.categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        )}
+          />
 
-        <button
-          onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
-          style={{
-            padding: '10px 16px',
-            borderRadius: '8px',
-            border: isGroupedByCategory ? '2px solid var(--action-color)' : '1px solid #444',
-            background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
-            color: isGroupedByCategory ? 'var(--action-color)' : 'var(--text-primary)',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
-        </button>
+          {warehouse?.categories && warehouse.categories.length > 0 && (
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              style={{
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #444',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                minWidth: '120px'
+              }}
+            >
+              <option value="">כל הקטגוריות</option>
+              {warehouse.categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          )}
 
-        <button
-          onClick={toggleSelectionMode}
-          style={{
-            padding: '10px 16px',
-            borderRadius: '8px',
-            border: isSelectionMode ? '2px solid var(--action-color)' : '1px solid #444',
-            background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
-            color: isSelectionMode ? 'var(--action-color)' : 'var(--text-primary)',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {isSelectionMode ? 'בטל בחירה' : 'בחר'}
-        </button>
-
-        {!isValidationMode && (
           <button
-            onClick={() => startSession(scopeId)}
+            onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
             style={{
               padding: '10px 16px',
               borderRadius: '8px',
-              border: '1px solid #444',
-              background: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
+              border: isGroupedByCategory ? '2px solid var(--action-color)' : '1px solid #444',
+              background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
+              color: isGroupedByCategory ? 'var(--action-color)' : 'var(--text-primary)',
               cursor: 'pointer',
               whiteSpace: 'nowrap'
             }}
           >
-            מצב ווידוא
+            {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
           </button>
-        )}
+
+          <button
+            onClick={toggleSelectionMode}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: isSelectionMode ? '2px solid var(--action-color)' : '1px solid #444',
+              background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
+              color: isSelectionMode ? 'var(--action-color)' : 'var(--text-primary)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {isSelectionMode ? 'בטל בחירה' : 'בחר'}
+          </button>
+
+          {!isValidationMode && (
+            <button
+              onClick={() => startSession(scopeId)}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '8px',
+                border: '1px solid #444',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              מצב ווידוא
+            </button>
+          )}
+        </div>
       </div>
 
-      {isSelectionMode && (
-        <style>{`
+      {
+        isSelectionMode && (
+          <style>{`
           .fab { bottom: calc(200px + env(safe-area-inset-bottom)) !important; }
         `}</style>
-      )}
+        )
+      }
 
-      {isSelectionMode && !bulkAction && (
-        <div style={{
-          position: 'fixed', bottom: 'calc(75px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)',
-          background: '#222', padding: '12px', borderRadius: '16px',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.6)', zIndex: 1000,
-          width: '94%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '10px',
-          border: '1px solid #444'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 'bold' }}>{selectedItemIds.size} נבחרו</span>
-            <span style={{ fontSize: '12px', color: '#888' }}>בחר פעולה:</span>
+      {
+        isSelectionMode && !bulkAction && (
+          <div style={{
+            position: 'fixed', bottom: 'calc(75px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)',
+            background: '#222', padding: '12px', borderRadius: '16px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.6)', zIndex: 1000,
+            width: '94%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '10px',
+            border: '1px solid #444'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 'bold' }}>{selectedItemIds.size} נבחרו</span>
+              <span style={{ fontSize: '12px', color: '#888' }}>בחר פעולה:</span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+              <button className="bulk-btn" onClick={handleBulkValidate}>✅ ווידוא</button>
+
+              {!isValidationMode && (
+                <>
+                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('status'); }}>🔄 סטטוס</button>
+                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('category'); }}>🏷️ קטגוריה</button>
+                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('move'); }}>📦 העברה</button>
+                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('activity'); }}>📌 לפעילות</button>
+                </>
+              )}
+            </div>
           </div>
-
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-            <button className="bulk-btn" onClick={handleBulkValidate}>✅ ווידוא</button>
-
-            {!isValidationMode && (
-              <>
-                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('status'); }}>🔄 סטטוס</button>
-                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('category'); }}>🏷️ קטגוריה</button>
-                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('move'); }}>📦 העברה</button>
-                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('activity'); }}>📌 לפעילות</button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+        )
+      }
 
       <style>{`
         .bulk-btn {
@@ -549,11 +555,11 @@ function WarehouseDetailsPage() {
                     margin: '0 0 8px 0',
                     color: 'var(--action-color)',
                     fontSize: '18px',
-                    background: 'var(--bg-secondary)',
+                    background: 'var(--bg-color)',
                     paddingTop: '8px',
                     paddingBottom: '8px',
                     position: 'sticky',
-                    top: '0',
+                    top: '200px', // Adjusted to not overlap with main sticky header
                     zIndex: 10
                   }}>
                     {categoryName} ({items.length})
@@ -586,6 +592,17 @@ function WarehouseDetailsPage() {
         />
       )}
 
+      {renderBulkActionModal()}
+
+      {splitCandidate && (
+        <QuantityModal
+          onCancel={() => setSplitCandidate(null)}
+          onConfirm={handleSplitConfirm}
+          maxQuantity={splitCandidate.quantity || 1}
+          title={`פיצול פריט: ${splitCandidate.name}`}
+        />
+      )}
+
       {isOptionsModalOpen && (
         <WarehouseOptionsModal
           warehouse={warehouse}
@@ -599,18 +616,6 @@ function WarehouseDetailsPage() {
           onClose={() => setSubItemsModalItem(null)}
         />
       )}
-
-      {renderBulkActionModal()}
-
-      {splitCandidate && splitCandidate.quantity && (
-        <QuantityModal
-          title={`בחר כמות עבור "${splitCandidate.name}"`}
-          maxQuantity={splitCandidate.quantity}
-          onConfirm={handleSplitConfirm}
-          onCancel={() => setSplitCandidate(null)}
-        />
-      )}
-
     </div>
   );
 }

@@ -453,94 +453,96 @@ function ActivityDetailsPage() {
 
   return (
     <div style={{ paddingBottom: isSelectionMode ? '180px' : '60px' }}>
-      <HeaderNav
-        title={activity.name}
-        onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
-      />
-
-      {isValidationMode && (
-        <div style={{
-          background: 'rgba(52, 199, 89, 0.2)',
-          color: '#4caf50',
-          padding: '12px',
-          textAlign: 'center',
-          fontWeight: 'bold',
-          borderBottom: '1px solid rgba(52, 199, 89, 0.4)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span>🕵️ מצב ווידוא פעיל</span>
-          <button
-            onClick={() => stopSession(scopeId)}
-            style={{
-              background: 'rgba(0,0,0,0.3)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '4px 12px',
-              fontSize: '12px',
-              cursor: 'pointer'
-            }}
-          >
-            סיים
-          </button>
-        </div>
-      )}
-
-      {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
-
-      <div style={{ padding: '0 16px 10px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          type="text"
-          placeholder="חפש פריט..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          style={{
-            flex: 1,
-            padding: '10px',
-            borderRadius: '8px',
-            border: '1px solid #444',
-            background: 'var(--bg-secondary)',
-            color: 'var(--text-primary)',
-            minWidth: '200px'
-          }}
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'var(--bg-color)', paddingBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <HeaderNav
+          title={activity.name}
+          onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
         />
 
-        {availableCategories.length > 0 && (
-          <select
-            value={categoryFilter}
-            onChange={e => setCategoryFilter(e.target.value)}
+        {isValidationMode && (
+          <div style={{
+            background: 'rgba(52, 199, 89, 0.2)',
+            color: '#4caf50',
+            padding: '12px',
+            textAlign: 'center',
+            fontWeight: 'bold',
+            borderBottom: '1px solid rgba(52, 199, 89, 0.4)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <span>🕵️ מצב ווידוא פעיל</span>
+            <button
+              onClick={() => stopSession(scopeId)}
+              style={{
+                background: 'rgba(0,0,0,0.3)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '4px 12px',
+                fontSize: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              סיים
+            </button>
+          </div>
+        )}
+
+        {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
+
+        <div style={{ padding: '0 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="חפש פריט..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
             style={{
+              flex: 1,
               padding: '10px',
               borderRadius: '8px',
               border: '1px solid #444',
               background: 'var(--bg-secondary)',
               color: 'var(--text-primary)',
-              minWidth: '120px'
+              minWidth: '200px'
+            }}
+          />
+
+          {availableCategories.length > 0 && (
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              style={{
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #444',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                minWidth: '120px'
+              }}
+            >
+              <option value="">כל הקטגוריות</option>
+              {availableCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          )}
+
+          <button
+            onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: isGroupedByCategory ? '2px solid var(--action-color)' : '1px solid #444',
+              background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
+              color: isGroupedByCategory ? 'var(--action-color)' : 'var(--text-primary)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
-            <option value="">כל הקטגוריות</option>
-            {availableCategories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        )}
-
-        <button
-          onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
-          style={{
-            padding: '10px 16px',
-            borderRadius: '8px',
-            border: isGroupedByCategory ? '2px solid var(--action-color)' : '1px solid #444',
-            background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
-            color: isGroupedByCategory ? 'var(--action-color)' : 'var(--text-primary)',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
-        </button>
+            {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
+          </button>
+        </div>
       </div>
 
       <div className="details-card">
@@ -598,7 +600,7 @@ function ActivityDetailsPage() {
             isGroupedByCategory ? (
               groupByCategory(finalMissingItems).map(([categoryName, items]) => (
                 <div key={`missing-${categoryName}`}>
-                  <h5 className="category-header">{categoryName}</h5>
+                  <h5 className="category-header" style={{ position: 'sticky', top: '190px', zIndex: 10, background: 'var(--bg-color)' }}>{categoryName}</h5>
                   {Object.values(groupByName(items))
                     .sort((a, b) => a[0].name.localeCompare(b[0].name))
                     .map(group => renderItemOrGroup(group))}
@@ -621,7 +623,7 @@ function ActivityDetailsPage() {
             isGroupedByCategory ? (
               groupByCategory(finalAssignedItems).map(([categoryName, items]) => (
                 <div key={`assigned-${categoryName}`}>
-                  <h5 className="category-header">{categoryName}</h5>
+                  <h5 className="category-header" style={{ position: 'sticky', top: '190px', zIndex: 10, background: 'var(--bg-color)' }}>{categoryName}</h5>
                   {Object.values(groupByName(items))
                     .sort((a, b) => a[0].name.localeCompare(b[0].name))
                     .map(group => renderItemOrGroup(group))}
