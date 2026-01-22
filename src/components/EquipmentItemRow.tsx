@@ -34,7 +34,6 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
 
   const secondaryInfo = `אחראי: ${manager?.displayName || '...'} • ווידוא: ${checkDate}`;
 
-  const statusInfo = statusMap[item.status] || { text: 'לא ידוע', class: 'status-grey' };
 
   const startPress = () => {
     setIsLongPressTriggered(false);
@@ -94,12 +93,12 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
           />
         </div>
       )}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="equipment-details">
-          <div className="equipment-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>{item.name}</span>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0 }}>
+        <div className="equipment-details" style={{ minWidth: 0 }}>
+          <div className="equipment-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', minWidth: 0 }}>
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
             {item.quantity && item.quantity > 1 && (
-              <span style={{ fontSize: '0.8em', color: '#aaa' }}>
+              <span style={{ fontSize: '0.8em', color: '#aaa', flexShrink: 0 }}>
                 (x{item.quantity})
               </span>
             )}
@@ -118,7 +117,8 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
                   background: 'transparent',
                   color: '#aaa',
                   marginRight: '8px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  flexShrink: 0
                 }}
               >
                 רשימת ציוד ({item.subItems.length})
@@ -126,13 +126,13 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
             )}
           </div>
           {item.status !== 'loaned' && (
-            <div className="equipment-secondary-info">
+            <div className="equipment-secondary-info" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {secondaryInfo}
             </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
           {item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) && (
             <div className="validation-warning" title="נדרש ווידוא (לא נבדק ב-7 ימים האחרונים)">
               ⚠️
@@ -140,9 +140,9 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
             </div>
           )}
 
-          <div className={`equipment-status ${statusInfo.class}`}>
+          <div className={`equipment-status ${statusMap[item.status]?.class || 'status-grey'}`}>
             <span className="status-dot"></span>
-            <span>{statusInfo.text}</span>
+            <span>{statusMap[item.status]?.text || 'לא ידוע'}</span>
           </div>
         </div>
       </div>
