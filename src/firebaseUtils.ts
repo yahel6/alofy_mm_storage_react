@@ -1,6 +1,6 @@
 import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove, query, where, getDocs } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import type { EquipmentItem, Activity, Warehouse } from './types';
+import type { EquipmentItem, Activity, Warehouse, Group } from './types';
 
 // סוגי הסטטוסים האפשריים
 type EquipmentStatus = EquipmentItem['status'];
@@ -791,3 +791,227 @@ export const checkForMerge = async (itemId: string) => {
     console.error("Error in checkForMerge:", error);
   }
 };
+
+// --- קבוצות (Groups) ---
+
+/**
+ * יוצר קבוצה חדשה
+ */
+export const createNewGroup = async (name: string, ownerId: string) => {
+  try {
+    const groupRef = await addDoc(collection(db, 'groups'), {
+      name: name.trim(),
+      ownerId,
+      members: [ownerId],
+      pendingRequests: []
+    });
+
+    // עדכון המשתמש שיש לו קבוצה חדשה
+    const userRef = doc(db, 'users', ownerId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const groupIds = userData.groupIds || [];
+      if (!groupIds.includes(groupRef.id)) {
+        await updateDoc(userRef, {
+          groupIds: [...groupIds, groupRef.id]
+        });
+      }
+    }
+
+    console.log(`קבוצה חדשה ${groupRef.id} נוצרה.`);
+    return groupRef.id;
+  } catch (error) {
+    console.error("שגיאה ביצירת קבוצה:", error);
+    return null;
+  }
+};
+
+/**
+ * עדכון פרטי קבוצה
+ */
+export const updateGroup = async (groupId: string, data: Partial<Group>) => {
+  try {
+    const ref = doc(db, 'groups', groupId);
+    await updateDoc(ref, data);
+    return true;
+  } catch (error) {
+    console.error("שגיאה בעדכון קבוצה:", error);
+    return false;
+  }
+};
+
+/**
+ * בקשת הצטרפות לקבוצה
+ */
+export const requestToJoinGroup = async (groupId: string, userId: string) => {
+  try {
+    const ref = doc(db, 'groups', groupId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+
+    const group = snap.data() as Group;
+    if (group.members.includes(userId)) return true; // כבר חבר
+    if (group.pendingRequests.includes(userId)) return true; // כבר ביקש
+
+    await updateDoc(ref, {
+      pendingRequests: [...group.pendingRequests, userId]
+    });
+    return true;
+  } catch (error) {
+    console.error("שגיאה בבקשת הצטרפות:", error);
+    return false;
+  }
+};
+
+/**
+ * אישור בקשת הצטרפות
+ */
+export const approveJoinRequest = async (groupId: string, userId: string) => {
+  try {
+    const groupRef = doc(db, 'groups', groupId);
+    const groupSnap = await getDoc(groupRef);
+    if (!groupSnap.exists()) return false;
+
+    const group = groupSnap.data() as Group;
+    const newPending = group.pendingRequests.filter(id => id !== userId);
+    const newMembers = [...group.members, userId];
+
+    const batch = writeBatch(db);
+    batch.update(groupRef, {
+      pendingRequests: newPending,
+      members: newMembers
+    });
+
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    const currentGroups = userSnap.exists() ? userSnap.data().groupIds || [] : [];
+    if (!currentGroups.includes(groupId)) {
+      batch.update(userRef, { groupIds: [...currentGroups, groupId] });
+    }
+
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("שגיאה באישור בקשה:", error);
+    return false;
+  }
+};
+
+/**
+ * דחיית בקשת הצטרפות
+ */
+export const rejectJoinRequest = async (groupId: string, userId: string) => {
+  try {
+    const ref = doc(db, 'groups', groupId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+
+    const group = snap.data() as Group;
+    await updateDoc(ref, {
+      pendingRequests: group.pendingRequests.filter(id => id !== userId)
+    });
+    return true;
+  } catch (error) {
+    console.error("שגיאה בדחיית בקשה:", error);
+    return false;
+  }
+};
+
+/**
+ * הסרת חבר מקבוצה
+ */
+export const removeMemberFromGroup = async (groupId: string, userId: string) => {
+  try {
+    const groupRef = doc(db, 'groups', groupId);
+    const groupSnap = await getDoc(groupRef);
+    if (!groupSnap.exists()) return false;
+
+    const group = groupSnap.data() as Group;
+    if (group.ownerId === userId) {
+      alert("לא ניתן להסיר את מנהל הקבוצה.");
+      return false;
+    }
+
+    const batch = writeBatch(db);
+    batch.update(groupRef, {
+      members: group.members.filter(id => id !== userId)
+    });
+
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const currentGroups = userSnap.data().groupIds || [];
+      batch.update(userRef, { groupIds: currentGroups.filter((id: string) => id !== groupId) });
+    }
+
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("שגיאה בהסרת חבר:", error);
+    return false;
+  }
+};
+
+/**
+ * שיוך ישות (מחסן/פעילות) לקבוצה
+ */
+export const associateEntityWithGroup = async (entityType: 'warehouses' | 'activities', entityId: string, groupId: string | null) => {
+  try {
+    const ref = doc(db, entityType, entityId);
+    await updateDoc(ref, { groupId });
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+/**
+ * מחיקת קבוצה (ניקוי חברים וישויות קשורות)
+ */
+export const deleteGroup = async (groupId: string) => {
+  if (!confirm("האם אתה בטוח שברצונך למחוק את הקבוצה? פעולה זו תסיר את כל החברים ותנתק את הקבוצה מהמחסנים והפעילויות המשויכים אליה.")) {
+    return false;
+  }
+
+  try {
+    const groupRef = doc(db, 'groups', groupId);
+    const snap = await getDoc(groupRef);
+    if (!snap.exists()) return false;
+
+    const group = snap.data() as Group;
+    const batch = writeBatch(db);
+
+    // 1. הסרת הקבוצה מהמשתמשים
+    group.members.forEach(userId => {
+      const userRef = doc(db, 'users', userId);
+      batch.update(userRef, {
+        groupIds: arrayRemove(groupId)
+      });
+    });
+
+    // 2. ניתוק מחסנים
+    const warehousesRef = collection(db, 'warehouses');
+    const wSnap = await getDocs(query(warehousesRef, where('groupId', '==', groupId)));
+    wSnap.forEach(d => {
+      batch.update(d.ref, { groupId: null });
+    });
+
+    // 3. ניתוק פעילויות
+    const activitiesRef = collection(db, 'activities');
+    const aSnap = await getDocs(query(activitiesRef, where('groupId', '==', groupId)));
+    aSnap.forEach(d => {
+      batch.update(d.ref, { groupId: null });
+    });
+
+    // 4. מחיקת הקבוצה עצמה
+    batch.delete(groupRef);
+
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("שגיאה במחיקת קבוצה:", error);
+    return false;
+  }
+};
+

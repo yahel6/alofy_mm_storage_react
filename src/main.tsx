@@ -25,6 +25,7 @@ import FilteredEquipmentPage from './pages/FilteredEquipmentPage.tsx';
 import WarehouseFormPage from './pages/WarehouseFormPage';
 import AdminUsersPage from './pages/AdminUsersPage.tsx';
 import ProfilePage from './pages/ProfilePage.tsx';
+import GroupManagementPage from './pages/GroupManagementPage.tsx';
 import AdminOnly from './components/AdminOnlyRoute.tsx';
 
 
@@ -114,6 +115,10 @@ const router = createBrowserRouter([
       {
         path: "profile", // פרופיל משתמש
         element: <ProfilePage />,
+      },
+      {
+        path: "groups", // ניהול קבוצות
+        element: <GroupManagementPage />,
       }
     ]
   },

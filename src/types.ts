@@ -7,6 +7,20 @@ export interface AppUser {
   email: string;
   approved: boolean;
   role: string;
+  /** רשימת מזהי קבוצות שהמשתמש חבר בהן */
+  groupIds?: string[];
+}
+
+// טיפוס קבוצה
+export interface Group {
+  id: string;
+  name: string;
+  /** ה-UID של המשתמש שפתח את הקבוצה */
+  ownerId: string;
+  /** רשימת ה-UIDs של חברי הקבוצה */
+  members: string[];
+  /** רשימת בקשות הצטרפות (ממתינות לאישור) */
+  pendingRequests: string[];
 }
 
 // טיפוס מחסן
@@ -14,7 +28,9 @@ export interface Warehouse {
   id: string;
   name: string;
   /** רשימת קטגוריות שהמחסן תומך בהן (אופציונלי) */
-  categories?: string[]; // ["מטענים","סנסורים","כבלים"]
+  categories?: string[];
+  /** מזהה הקבוצה אליה המחסן משוייך (אופציונלי) */
+  groupId?: string;
 }
 
 // טיפוס פריט ציוד
@@ -48,4 +64,6 @@ export interface Activity {
   date: string;
   equipmentRequiredIds: string[];
   equipmentMissingIds: string[];
+  /** מזהה הקבוצה אליה הפעילות משוייכת (אופציונלי) */
+  groupId?: string;
 }

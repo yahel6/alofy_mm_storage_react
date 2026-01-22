@@ -3,11 +3,12 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { collection, onSnapshot, doc, setDoc, type DocumentData } from 'firebase/firestore';
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { db, auth } from '../firebaseConfig';
-import type { AppUser, Warehouse, EquipmentItem, Activity } from '../types';
+import type { AppUser, Warehouse, EquipmentItem, Activity, Group } from '../types';
 
 // הגדרת מה ה-Context יספק
 interface DatabaseContextState {
   users: AppUser[];
+  groups: Group[];
   warehouses: Warehouse[];
   equipment: EquipmentItem[];
   activities: Activity[];
@@ -21,14 +22,15 @@ const DatabaseContext = createContext<DatabaseContextState | undefined>(undefine
 // יצירת ה-"ספק" (Provider)
 export function DatabaseProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  
-  // 1. --- התיקון ---
+
   // נהפוך את isLoading לאובייקט שעוקב אחרי כל טעינה בנפרד
   const [loadingStates, setLoadingStates] = useState({
     users: true,
+    groups: true,
     warehouses: true,
     equipment: true,
     activities: true,
@@ -38,7 +40,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
 
-  // 2. --- התיקון ---
   // isLoading הכללי יהיה true כל עוד *אחד* מהפריטים עדיין בטעינה
   const isLoading = Object.values(loadingStates).some(state => state === true);
 
@@ -56,41 +57,37 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const usersData = mapSnapshot<AppUser>(snapshot);
       setUsers(usersData);
-      console.log("משתמשים נטענו:", usersData.length);
-      // 3. --- התיקון ---
-      // עדכן רק את מצב הטעינה של המשתמשים
       setLoadingStates(prev => ({ ...prev, users: false }));
+    });
+
+    const unsubGroups = onSnapshot(collection(db, 'groups'), (snapshot) => {
+      setGroups(mapSnapshot<Group>(snapshot));
+      setLoadingStates(prev => ({ ...prev, groups: false }));
     });
 
     const unsubWarehouses = onSnapshot(collection(db, 'warehouses'), (snapshot) => {
       setWarehouses(mapSnapshot<Warehouse>(snapshot));
-      // 3. --- התיקון ---
       setLoadingStates(prev => ({ ...prev, warehouses: false }));
     });
 
     const unsubEquipment = onSnapshot(collection(db, 'equipment'), (snapshot) => {
       setEquipment(mapSnapshot<EquipmentItem>(snapshot));
-      // 3. --- התיקון ---
       setLoadingStates(prev => ({ ...prev, equipment: false }));
     });
 
     const unsubActivities = onSnapshot(collection(db, 'activities'), (snapshot) => {
       setActivities(mapSnapshot<Activity>(snapshot));
-      // 3. --- התיקון ---
       setLoadingStates(prev => ({ ...prev, activities: false }));
     });
-    
-    // 4. --- התיקון ---
-    // מחקנו את `setIsLoading(false)` מכאן!
-    
+
     // האזנה לשינויי התחברות (Auth)
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setAuthUser(user); // שמור את משתמש ה-Auth
     });
 
     return () => {
-      console.log("DatabaseContext: מפסיק האזנה.");
       unsubUsers();
+      unsubGroups();
       unsubWarehouses();
       unsubEquipment();
       unsubActivities();
@@ -100,9 +97,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
   // אפקט חדש ליצירת משתמש
   useEffect(() => {
-    // 5. --- התיקון ---
     // אל תנסה למצוא משתמש עד שרשימת המשתמשים סיימה להיטען
-    if (loadingStates.users) return; 
+    if (loadingStates.users) return;
 
     if (authUser && users.length > 0) {
       const appUser = users.find(u => u.uid === authUser.uid);
@@ -111,13 +107,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         setCurrentUser(appUser);
       } else {
         console.log("משתמש חדש זוהה! יוצר רשומה ב-Firestore...");
-        
+
         const newUserData: AppUser = {
           uid: authUser.uid,
           displayName: authUser.displayName || "משתמש חדש",
           email: authUser.email || "",
           approved: false,
-          role: 'pending' // ברירת מחדל
+          role: 'pending',
+          groupIds: []
         };
 
         const userRef = doc(db, "users", authUser.uid);
@@ -134,10 +131,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     }
     // 6. --- התיקון ---
     // הוספנו תלות במצב הטעינה של המשתמשים
-  }, [authUser, users, loadingStates.users]); 
+  }, [authUser, users, loadingStates.users]);
 
   // החזרת ה-Provider עם המידע המלא
-  const value = { users, warehouses, equipment, activities, isLoading, currentUser };
+  const value = { users, groups, warehouses, equipment, activities, isLoading, currentUser };
 
   return (
     <DatabaseContext.Provider value={value}>

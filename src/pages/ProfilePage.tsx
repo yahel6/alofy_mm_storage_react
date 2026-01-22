@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../contexts/DatabaseContext';
-import { updateUserProfile } from '../firebaseUtils';
+import { updateUserProfile, requestToJoinGroup } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css';
 
 const ProfilePage: React.FC = () => {
-    const { currentUser, users } = useDatabase();
+    const { currentUser, users, groups } = useDatabase();
     // We get the full user object from the database context to ensure we have the latest display name
     const [displayName, setDisplayName] = useState('');
     const [loading, setLoading] = useState(false);
@@ -89,12 +89,98 @@ const ProfilePage: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="save-bar">
+                    <div className="save-bar" style={{ marginBottom: '32px' }}>
                         <button type="submit" className="btn-submit" disabled={loading}>
                             {loading ? 'שומר...' : 'שמור שינויים'}
                         </button>
                     </div>
                 </form>
+
+                {/* מדור קבוצות */}
+                <div style={{ maxWidth: '500px', margin: '0 auto', borderTop: '1px solid #333', paddingTop: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h3 style={{ margin: 0 }}>הקבוצות שלי</h3>
+                        <button
+                            onClick={() => window.location.href = '/groups'}
+                            style={{
+                                background: 'none',
+                                border: '1px solid var(--action-color)',
+                                color: 'var(--action-color)',
+                                padding: '4px 12px',
+                                borderRadius: '6px',
+                                fontSize: '0.9em',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {groups && groups.some(g => g.ownerId === currentUser?.uid) ? 'נהל קבוצות' : 'צור קבוצה חדשה'}
+                        </button>
+                    </div>
+
+                    {/* קבוצות שהמשתמש חבר בהן */}
+                    <div style={{ marginBottom: '24px' }}>
+                        {groups && groups.filter(g => g.members.includes(currentUser?.uid || '')).length > 0 ? (
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                                {groups.filter(g => g.members.includes(currentUser?.uid || '')).map(group => (
+                                    <div key={group.id} style={{
+                                        padding: '12px',
+                                        background: 'var(--card-bg-color)',
+                                        borderRadius: '8px',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <span>{group.name}</span>
+                                        {group.ownerId === currentUser?.uid && (
+                                            <span style={{ fontSize: '0.8em', color: 'var(--action-color)', background: 'rgba(var(--action-color-rgb), 0.1)', padding: '2px 6px', borderRadius: '4px' }}>מנהל</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p style={{ color: '#aaa', fontSize: '0.9em' }}>אתה לא חבר באף קבוצה כרגע.</p>
+                        )}
+                    </div>
+
+                    <h3 style={{ marginBottom: '16px' }}>הצטרפות לקבוצה</h3>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                        {groups && groups
+                            .filter(g => !g.members.includes(currentUser?.uid || ''))
+                            .map(group => {
+                                const isPending = group.pendingRequests?.includes(currentUser?.uid || '');
+                                return (
+                                    <div key={group.id} style={{
+                                        padding: '12px',
+                                        background: 'var(--bg-secondary)',
+                                        borderRadius: '8px',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <span>{group.name}</span>
+                                        <button
+                                            onClick={() => currentUser && requestToJoinGroup(group.id, currentUser.uid)}
+                                            disabled={isPending}
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                background: isPending ? '#444' : 'var(--action-color)',
+                                                color: isPending ? '#888' : 'white',
+                                                cursor: isPending ? 'default' : 'pointer',
+                                                fontSize: '0.9em'
+                                            }}
+                                        >
+                                            {isPending ? 'נשלחה בקשה' : 'בקש להצטרף'}
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        }
+                        {groups && groups.filter(g => !g.members.includes(currentUser?.uid || '')).length === 0 && (
+                            <p style={{ color: '#aaa', fontSize: '0.9em' }}>אין קבוצות זמינות להצטרפות.</p>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
