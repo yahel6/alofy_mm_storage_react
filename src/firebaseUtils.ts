@@ -954,8 +954,59 @@ export const approveJoinRequest = async (groupId: string, userId: string) => {
 };
 
 /**
- * דחיית בקשת הצטרפות
+ * הוספת חבר לקבוצה ישירות (ללא תהליך אישור)
  */
+export const addMemberToGroup = async (groupId: string, userId: string) => {
+  try {
+    const groupRef = doc(db, 'groups', groupId);
+    const userRef = doc(db, 'users', userId);
+
+    const batch = writeBatch(db);
+    batch.update(groupRef, {
+      members: arrayUnion(userId),
+      pendingRequests: arrayRemove(userId)
+    });
+    batch.update(userRef, {
+      groupIds: arrayUnion(groupId)
+    });
+
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("שגיאה בהוספת חבר לקבוצה:", error);
+    return false;
+  }
+};
+
+/**
+ * הוספת מספר חברים לקבוצה יחד
+ */
+export const addMembersToGroup = async (groupId: string, userIds: string[]) => {
+  if (!userIds || userIds.length === 0) return true;
+
+  try {
+    const groupRef = doc(db, 'groups', groupId);
+    const batch = writeBatch(db);
+
+    batch.update(groupRef, {
+      members: arrayUnion(...userIds),
+      pendingRequests: arrayRemove(...userIds)
+    });
+
+    for (const uId of userIds) {
+      const userRef = doc(db, 'users', uId);
+      batch.update(userRef, {
+        groupIds: arrayUnion(groupId)
+      });
+    }
+
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("שגיאה בהוספת חברים לקבוצה:", error);
+    return false;
+  }
+};
 export const rejectJoinRequest = async (groupId: string, userId: string) => {
   try {
     const ref = doc(db, 'groups', groupId);

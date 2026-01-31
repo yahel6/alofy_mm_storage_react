@@ -6,13 +6,15 @@ import {
     rejectJoinRequest,
     removeMemberFromGroup,
     associateEntityWithGroup,
-    deleteGroup
+    deleteGroup,
+    addMembersToGroup
 } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css';
 
 const GroupManagementPage: React.FC = () => {
     const navigate = useNavigate();
+    const [selectedUsers, setSelectedUsers] = React.useState<{ [groupId: string]: string[] }>({});
     const { groups, users, warehouses, allWarehouses, activities, allActivities, currentUser, isLoading } = useDatabase();
 
     if (isLoading || !currentUser) return <div className="loading-screen">טוען...</div>;
@@ -148,6 +150,79 @@ const GroupManagementPage: React.FC = () => {
                                                             </div>
                                                         );
                                                     })}
+                                                </div>
+
+                                                {/* הוספת חברים חדשים */}
+                                                <div style={{ marginTop: '16px' }}>
+                                                    <h5 style={{ fontSize: '0.85rem', marginBottom: '8px', color: 'var(--text-secondary)' }}>הוספת חברים חדשים</h5>
+                                                    <div style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                                                        gap: '8px',
+                                                        maxHeight: '150px',
+                                                        overflowY: 'auto',
+                                                        padding: '10px',
+                                                        background: '#1a1a1a',
+                                                        borderRadius: '12px',
+                                                        border: '1px solid #333',
+                                                        marginBottom: '12px'
+                                                    }}>
+                                                        {users
+                                                            .filter(u => !group.members.includes(u.uid))
+                                                            .map(u => {
+                                                                const isSelected = (selectedUsers[group.id] || []).includes(u.uid);
+                                                                return (
+                                                                    <div
+                                                                        key={u.uid}
+                                                                        onClick={() => {
+                                                                            setSelectedUsers(prev => {
+                                                                                const current = prev[group.id] || [];
+                                                                                const next = isSelected ? current.filter(id => id !== u.uid) : [...current, u.uid];
+                                                                                return { ...prev, [group.id]: next };
+                                                                            });
+                                                                        }}
+                                                                        style={{
+                                                                            padding: '6px 8px',
+                                                                            background: isSelected ? 'var(--action-color)' : '#2a2a2a',
+                                                                            color: isSelected ? 'white' : 'var(--text-primary)',
+                                                                            borderRadius: '8px',
+                                                                            fontSize: '0.8rem',
+                                                                            cursor: 'pointer',
+                                                                            textAlign: 'center',
+                                                                            transition: 'all 0.2s',
+                                                                            border: isSelected ? '1px solid var(--action-color)' : '1px solid #444'
+                                                                        }}
+                                                                    >
+                                                                        {u.displayName || u.email}
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        }
+                                                    </div>
+
+                                                    {(selectedUsers[group.id] || []).length > 0 && (
+                                                        <button
+                                                            onClick={async () => {
+                                                                const success = await addMembersToGroup(group.id, selectedUsers[group.id]);
+                                                                if (success) {
+                                                                    setSelectedUsers(prev => ({ ...prev, [group.id]: [] }));
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px',
+                                                                background: 'var(--action-color)',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                borderRadius: '8px',
+                                                                fontSize: '0.9rem',
+                                                                fontWeight: 'bold',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            צרף {(selectedUsers[group.id] || []).length} חברים נבחרים
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
 
