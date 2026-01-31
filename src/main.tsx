@@ -26,6 +26,7 @@ import WarehouseFormPage from './pages/WarehouseFormPage';
 import AdminUsersPage from './pages/AdminUsersPage.tsx';
 import ProfilePage from './pages/ProfilePage.tsx';
 import GroupManagementPage from './pages/GroupManagementPage.tsx';
+import GroupFormPage from './pages/GroupFormPage.tsx';
 import AdminOnly from './components/AdminOnlyRoute.tsx';
 
 
@@ -119,6 +120,10 @@ const router = createBrowserRouter([
       {
         path: "groups", // ניהול קבוצות
         element: <GroupManagementPage />,
+      },
+      {
+        path: "groups/new", // טופס הוספת קבוצה
+        element: <GroupFormPage />,
       }
     ]
   },

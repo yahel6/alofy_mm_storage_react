@@ -1,4 +1,4 @@
-import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove, query, where, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove, query, where, getDocs, arrayUnion } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import type { EquipmentItem, Activity, Warehouse, Group } from './types';
 
@@ -823,6 +823,61 @@ export const createNewGroup = async (name: string, ownerId: string) => {
     return groupRef.id;
   } catch (error) {
     console.error("שגיאה ביצירת קבוצה:", error);
+    return null;
+  }
+};
+
+/**
+ * יצירת קבוצה עם הגדרות ראשוניות (חברים, מחסנים, פעילויות)
+ */
+export const createGroupDetailed = async (
+  name: string,
+  ownerId: string,
+  initialMembers: string[],
+  initialWarehouses: string[],
+  initialActivities: string[]
+) => {
+  try {
+    const batch = writeBatch(db);
+
+    // 1. יצירת מסמך הקבוצה
+    const groupRef = doc(collection(db, 'groups'));
+    const groupId = groupRef.id;
+    const members = Array.from(new Set([ownerId, ...initialMembers]));
+
+    batch.set(groupRef, {
+      name: name.trim(),
+      ownerId,
+      members,
+      pendingRequests: []
+    });
+
+    // 2. עדכון חברות בקבוצה לכל המשתמשים
+    for (const userId of members) {
+      const userRef = doc(db, 'users', userId);
+      // הערה: במקרה אידיאלי היינו משתמשים ב-arrayUnion, אבל writeBatch דורש אובייקט מלא או עדכון שדות.
+      // מכיוון שאנחנו רוצים להיות בטוחים, נשתמש ב-update עם arrayUnion של Firebase.
+      batch.update(userRef, {
+        groupIds: arrayUnion(groupId)
+      });
+    }
+
+    // 3. שיוך מחסנים
+    for (const wId of initialWarehouses) {
+      const wRef = doc(db, 'warehouses', wId);
+      batch.update(wRef, { groupId });
+    }
+
+    // 4. שיוך פעילויות
+    for (const aId of initialActivities) {
+      const aRef = doc(db, 'activities', aId);
+      batch.update(aRef, { groupId });
+    }
+
+    await batch.commit();
+    return groupId;
+  } catch (error) {
+    console.error("שגיאה ביצירת קבוצה מפורטת:", error);
     return null;
   }
 };

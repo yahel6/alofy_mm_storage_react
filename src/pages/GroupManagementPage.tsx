@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import {
-    createNewGroup,
     approveJoinRequest,
     rejectJoinRequest,
     removeMemberFromGroup,
@@ -12,24 +12,13 @@ import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css';
 
 const GroupManagementPage: React.FC = () => {
+    const navigate = useNavigate();
     const { groups, users, warehouses, activities, currentUser, isLoading } = useDatabase();
-    const [newGroupName, setNewGroupName] = useState('');
-    const [isCreating, setIsCreating] = useState(false);
 
     if (isLoading || !currentUser) return <div className="loading-screen">טוען...</div>;
 
     const myOwnedGroups = groups.filter(g => g.ownerId === currentUser.uid);
 
-    const handleCreateGroup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newGroupName.trim()) return;
-        setIsCreating(true);
-        const success = await createNewGroup(newGroupName, currentUser.uid);
-        if (success) {
-            setNewGroupName('');
-        }
-        setIsCreating(false);
-    };
 
     const handleDeleteGroup = async (groupId: string) => {
         const success = await deleteGroup(groupId);
@@ -44,38 +33,25 @@ const GroupManagementPage: React.FC = () => {
 
             <div className="container page-content" style={{ paddingBottom: '100px' }}>
 
-                {/* יצירת קבוצה חדשה */}
-                <section className="form-card" style={{ marginBottom: '32px' }}>
-                    <h2 className="section-title" style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.2rem' }}>פתח קבוצה חדשה</h2>
-                    <form onSubmit={handleCreateGroup} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-                        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                            <label htmlFor="groupName" style={{ fontSize: '0.85rem' }}>שם הקבוצה</label>
-                            <input
-                                id="groupName"
-                                type="text"
-                                placeholder="לדוגמה: צוות שטח א'"
-                                value={newGroupName}
-                                onChange={(e) => setNewGroupName(e.target.value)}
-                                style={{ margin: 0 }}
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={isCreating}
-                            className="btn-submit"
-                            style={{
-                                width: 'auto',
-                                padding: '12px 24px',
-                                height: '48px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            {isCreating ? 'יוצר...' : 'צור קבוצה'}
-                        </button>
-                    </form>
-                </section>
+                {/* כפתור ליצירת קבוצה חדשה */}
+                <div style={{ marginBottom: '32px' }}>
+                    <button
+                        onClick={() => navigate('/groups/new')}
+                        className="btn-submit"
+                        style={{
+                            width: '100%',
+                            padding: '16px',
+                            fontSize: '1.1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '10px'
+                        }}
+                    >
+                        <span>➕</span>
+                        צור קבוצה חדשה
+                    </button>
+                </div>
 
                 <h2 className="section-title" style={{ marginBottom: '20px' }}>הקבוצות שפתחתי</h2>
 
