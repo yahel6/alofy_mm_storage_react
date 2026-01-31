@@ -1,6 +1,7 @@
 // src/pages/ActivitiesPage.tsx
 import { useDatabase } from '../contexts/DatabaseContext';
 import ActivityCard from '../components/ActivityCard'; // 1. ייבוא הכרטיס
+import HeaderNav from '../components/HeaderNav';
 
 function ActivitiesPage() {
   // 2. קבלת הפעילויות מה-Context
@@ -12,11 +13,8 @@ function ActivitiesPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="main-title">פעילויות</h1>
-        <div className="subtitle">הפעילויות שעודכנו לאחרונה</div>
-      </div>
-      <div className="container">
+      <HeaderNav title="פעילויות" />
+      <div className="container page-content">
         {/* 3. הצגת רשימת הפעילויות */}
         {activities.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>

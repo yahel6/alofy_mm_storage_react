@@ -77,7 +77,7 @@ const GroupManagementPage: React.FC = () => {
                     </form>
                 </section>
 
-                <h2 className="section-title" style={{ marginBottom: '20px' }}>הקבוצות שלי</h2>
+                <h2 className="section-title" style={{ marginBottom: '20px' }}>הקבוצות שפתחתי</h2>
 
                 {myOwnedGroups.length === 0 ? (
                     <div className="empty-state" style={{
@@ -112,7 +112,6 @@ const GroupManagementPage: React.FC = () => {
                                 }}>
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: '1.4rem' }}>{group.name}</h3>
-                                        <span style={{ fontSize: '0.8rem', color: '#666' }}>ID: {group.id}</span>
                                     </div>
                                     <button
                                         onClick={() => handleDeleteGroup(group.id)}
