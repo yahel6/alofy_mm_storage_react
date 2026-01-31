@@ -7,7 +7,7 @@ import '../components/Form.css';
 
 const GroupFormPage: React.FC = () => {
     const navigate = useNavigate();
-    const { users, warehouses, activities, currentUser, isLoading } = useDatabase();
+    const { users, allWarehouses, allActivities, currentUser, isLoading } = useDatabase();
 
     const [name, setName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -118,7 +118,7 @@ const GroupFormPage: React.FC = () => {
                             borderRadius: '8px',
                             border: '1px solid #444'
                         }}>
-                            {warehouses.map(w => (
+                            {allWarehouses.map(w => (
                                 <div
                                     key={w.id}
                                     onClick={() => toggleSelection(w.id, selectedWarehouses, setSelectedWarehouses)}
@@ -152,7 +152,7 @@ const GroupFormPage: React.FC = () => {
                             borderRadius: '8px',
                             border: '1px solid #444'
                         }}>
-                            {activities.map(a => (
+                            {allActivities.map(a => (
                                 <div
                                     key={a.id}
                                     onClick={() => toggleSelection(a.id, selectedActivities, setSelectedActivities)}

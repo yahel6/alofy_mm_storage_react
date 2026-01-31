@@ -13,7 +13,7 @@ import '../components/Form.css';
 
 const GroupManagementPage: React.FC = () => {
     const navigate = useNavigate();
-    const { groups, users, warehouses, activities, currentUser, isLoading } = useDatabase();
+    const { groups, users, warehouses, allWarehouses, activities, allActivities, currentUser, isLoading } = useDatabase();
 
     if (isLoading || !currentUser) return <div className="loading-screen">טוען...</div>;
 
@@ -204,7 +204,7 @@ const GroupManagementPage: React.FC = () => {
                                                 value=""
                                             >
                                                 <option value="">הוסף מחסן לקבוצה...</option>
-                                                {warehouses.filter(w => w.groupId !== group.id).map(w => (
+                                                {allWarehouses.filter(w => w.groupId !== group.id).map(w => (
                                                     <option key={w.id} value={w.id}>{w.name} {w.groupId ? '(משויך לאחר)' : ''}</option>
                                                 ))}
                                             </select>
@@ -244,7 +244,7 @@ const GroupManagementPage: React.FC = () => {
                                                 value=""
                                             >
                                                 <option value="">הוסף פעילות לקבוצה...</option>
-                                                {activities.filter(a => a.groupId !== group.id).map(a => (
+                                                {allActivities.filter(a => a.groupId !== group.id).map(a => (
                                                     <option key={a.id} value={a.id}>{a.name} {a.groupId ? '(משויך לאחר)' : ''}</option>
                                                 ))}
                                             </select>

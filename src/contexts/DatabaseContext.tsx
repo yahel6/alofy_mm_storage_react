@@ -1,5 +1,5 @@
 // src/contexts/DatabaseContext.tsx
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import { collection, onSnapshot, doc, setDoc, type DocumentData } from 'firebase/firestore';
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { db, auth } from '../firebaseConfig';
@@ -10,8 +10,11 @@ interface DatabaseContextState {
   users: AppUser[];
   groups: Group[];
   warehouses: Warehouse[];
+  allWarehouses: Warehouse[];
   equipment: EquipmentItem[];
+  allEquipment: EquipmentItem[];
   activities: Activity[];
+  allActivities: Activity[];
   isLoading: boolean;
   currentUser: AppUser | null;
 }
@@ -133,8 +136,44 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     // הוספנו תלות במצב הטעינה של המשתמשים
   }, [authUser, users, loadingStates.users]);
 
-  // החזרת ה-Provider עם המידע המלא
-  const value = { users, groups, warehouses, equipment, activities, isLoading, currentUser };
+  // --- לוגיקת סינון לפי קבוצות ---
+  const userGroupIds = currentUser?.groupIds || [];
+  const isUserAdmin = currentUser?.role === 'admin';
+
+  const filteredWarehouses = useMemo(() => {
+    if (isUserAdmin) return warehouses;
+    // רק מחסנים ששייכים לקבוצות של המשתמש
+    return warehouses.filter(w => w.groupId && userGroupIds.includes(w.groupId));
+  }, [warehouses, userGroupIds, isUserAdmin]);
+
+  const filteredActivities = useMemo(() => {
+    if (isUserAdmin) return activities;
+    // רק פעילויות ששייכות לקבוצות של המשתמש
+    return activities.filter(a => a.groupId && userGroupIds.includes(a.groupId));
+  }, [activities, userGroupIds, isUserAdmin]);
+
+  const filteredEquipment = useMemo(() => {
+    if (isUserAdmin) return equipment;
+    // פריט ציוד נראה אם המחסן שלו שייך לקבוצה של המשתמש
+    return equipment.filter(e => {
+      const warehouse = warehouses.find(w => w.id === e.warehouseId);
+      return warehouse && warehouse.groupId && userGroupIds.includes(warehouse.groupId);
+    });
+  }, [equipment, warehouses, userGroupIds, isUserAdmin]);
+
+  // החזרת ה-Provider עם המידע המלא והמסונן
+  const value = {
+    users,
+    groups,
+    warehouses: filteredWarehouses,
+    allWarehouses: warehouses,
+    equipment: filteredEquipment,
+    allEquipment: equipment,
+    activities: filteredActivities,
+    allActivities: activities,
+    isLoading,
+    currentUser
+  };
 
   return (
     <DatabaseContext.Provider value={value}>
