@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { updateUserProfile, requestToJoinGroup } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css';
 
 const ProfilePage: React.FC = () => {
+    const navigate = useNavigate();
     const { currentUser, users, groups } = useDatabase();
     // We get the full user object from the database context to ensure we have the latest display name
     const [displayName, setDisplayName] = useState('');
@@ -101,7 +103,7 @@ const ProfilePage: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h3 style={{ margin: 0 }}>הקבוצות שלי</h3>
                         <button
-                            onClick={() => window.location.href = '/groups'}
+                            onClick={() => navigate('/groups/new')}
                             style={{
                                 background: 'none',
                                 border: '1px solid var(--action-color)',
@@ -112,7 +114,7 @@ const ProfilePage: React.FC = () => {
                                 cursor: 'pointer'
                             }}
                         >
-                            {groups && groups.some(g => g.ownerId === currentUser?.uid) ? 'נהל קבוצות' : 'צור קבוצה חדשה'}
+                            צור קבוצה חדשה
                         </button>
                     </div>
 
@@ -129,10 +131,26 @@ const ProfilePage: React.FC = () => {
                                         justifyContent: 'space-between',
                                         alignItems: 'center'
                                     }}>
-                                        <span>{group.name}</span>
-                                        {group.ownerId === currentUser?.uid && (
-                                            <span style={{ fontSize: '0.8em', color: 'var(--action-color)', background: 'rgba(var(--action-color-rgb), 0.1)', padding: '2px 6px', borderRadius: '4px' }}>מנהל</span>
-                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span>{group.name}</span>
+                                            {group.ownerId === currentUser?.uid && (
+                                                <span style={{ fontSize: '0.8em', color: 'var(--action-color)', background: 'rgba(var(--action-color-rgb), 0.1)', padding: '2px 6px', borderRadius: '4px' }}>מנהל</span>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => navigate('/groups')}
+                                            style={{
+                                                background: 'var(--action-color)',
+                                                color: 'white',
+                                                border: 'none',
+                                                padding: '4px 10px',
+                                                borderRadius: '6px',
+                                                fontSize: '0.85em',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            פרטי קבוצה
+                                        </button>
                                     </div>
                                 ))}
                             </div>
