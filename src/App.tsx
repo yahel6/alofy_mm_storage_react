@@ -41,7 +41,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <main className="page-content">
+      <main className="main-layout-wrapper">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
