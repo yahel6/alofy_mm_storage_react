@@ -58,7 +58,6 @@ function App() {
               paddingBottom: '120px', // Space for Bottom Nav
               top: 0,
               left: 0,
-              overscrollBehavior: 'none'
             }}
           >
             <Outlet />

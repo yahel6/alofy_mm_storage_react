@@ -42,7 +42,7 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
         onLongPress();
         setIsLongPressTriggered(true);
       }
-    }, 600); // 600ms long press delay
+    }, 800); // 800ms long press delay
   };
 
   const endPress = () => {
@@ -70,11 +70,13 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
     <div
       className="equipment-item-content"
       style={{ display: 'flex', alignItems: 'center' }}
+      onMouseMove={endPress}
       onMouseDown={startPress}
       onMouseUp={endPress}
       onMouseLeave={endPress}
       onTouchStart={startPress}
       onTouchEnd={endPress}
+      onTouchMove={endPress}
       onClick={handleClick}
     >
       {isSelectable && (

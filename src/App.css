@@ -28,7 +28,7 @@
 .main-layout-wrapper {
     flex-grow: 1;
     position: relative;
-    overflow: hidden;
+    /* overflow: hidden; */
     /* This handles the clipping during page transitions */
 }
 
