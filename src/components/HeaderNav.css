@@ -15,6 +15,12 @@
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
+.header-title-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .header-title-container.branding-mode {
     position: absolute;
     inset: 0;
@@ -25,11 +31,19 @@
     width: 100%;
     padding: 0;
     margin: 0;
+    gap: 8px;
 }
 
-.branding-logo {
-    width: 32px;
-    height: 32px;
+.header-logo {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 8px var(--primary-color)) drop-shadow(0 0 15px var(--accent-color));
+    transition: transform 0.3s ease;
+}
+
+.header-logo:hover {
+    transform: scale(1.1) rotate(5deg);
 }
 
 .header-branding-title {
@@ -45,10 +59,14 @@
 }
 
 .header-title {
-    font-size: 1.1rem;
-    font-weight: 700;
+    font-size: 1.2rem;
+    font-weight: 800;
     margin: 0;
-    color: #efefef;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffffff 0%, #a0a0c0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .back-button {

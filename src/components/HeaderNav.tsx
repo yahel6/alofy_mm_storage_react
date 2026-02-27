@@ -37,7 +37,10 @@ const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick, onBack
 
       <div className={`header-title-container ${showBranding ? 'branding-mode' : ''}`}>
         {showBranding ? (
-          <h1 className="header-branding-title">Ordo</h1>
+          <>
+            <img src="/ordo-logo.png" alt="Ordo" className="header-logo" />
+            <h1 className="header-branding-title">Ordo</h1>
+          </>
         ) : (
           <h2 className="header-title">{title}</h2>
         )}
