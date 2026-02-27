@@ -11,6 +11,7 @@ type FormData = {
   name: string;
   /** קלט טקסטואלי עם פסיקים בין קטגוריות: "מטענים, סנסורים, כבלים" */
   categoriesText: string;
+  groupId: string;
 };
 
 export default function WarehouseFormPage() {
@@ -18,7 +19,7 @@ export default function WarehouseFormPage() {
   const isEdit = Boolean(warehouseId);
   const navigate = useNavigate();
 
-  const { warehouses, isLoading } = useDatabase();
+  const { warehouses, groups, isLoading, currentUser } = useDatabase();
 
   const current: Warehouse | undefined = useMemo(
     () => (isEdit ? warehouses.find(w => w.id === warehouseId) : undefined),
@@ -28,6 +29,7 @@ export default function WarehouseFormPage() {
   const [form, setForm] = useState<FormData>({
     name: '',
     categoriesText: '',
+    groupId: '',
   });
 
   useEffect(() => {
@@ -35,11 +37,12 @@ export default function WarehouseFormPage() {
       setForm({
         name: current.name,
         categoriesText: (current.categories ?? []).join(', '),
+        groupId: current.groupId || '',
       });
     }
   }, [isEdit, current]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
     setForm(prev => ({ ...prev, [id]: value }));
   };
@@ -60,14 +63,19 @@ export default function WarehouseFormPage() {
       return;
     }
 
+    if (!form.groupId) {
+      alert('חובה לבחור קבוצה למחסן.');
+      return;
+    }
+
     if (isEdit && warehouseId) {
-      const ok = await updateWarehouse(warehouseId, { name, categories });
+      const ok = await updateWarehouse(warehouseId, { name, categories, groupId: form.groupId });
       if (ok) {
         alert('המחסן עודכן בהצלחה');
         navigate(`/warehouses/${warehouseId}`);
       }
     } else {
-      const id = await addNewWarehouse({ name, categories });
+      const id = await addNewWarehouse({ name, categories, groupId: form.groupId });
       if (id) {
         alert('המחסן נוצר בהצלחה');
         navigate(`/warehouses/${id}`);
@@ -96,6 +104,24 @@ export default function WarehouseFormPage() {
               placeholder="לדוגמה: מחסן צפון"
               required
             />
+          </div>
+          <div className="form-group">
+            <label htmlFor="groupId">שיוך לקבוצה (חובה)</label>
+            <select
+              id="groupId"
+              value={form.groupId}
+              onChange={handleChange}
+              required
+            >
+              <option value="" disabled>בחר קבוצה...</option>
+              {groups
+                .filter(group => group.members.includes(currentUser?.uid || ''))
+                .map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+            </select>
           </div>
 
           <div className="form-group">

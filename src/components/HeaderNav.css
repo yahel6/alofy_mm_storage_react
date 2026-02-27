@@ -1,66 +1,87 @@
-/* src/components/HeaderNav.css */
-
 .header-nav {
     display: flex;
     align-items: center;
-    padding: calc(40px + env(safe-area-inset-top)) 16px 20px 16px;
-    border-bottom: 1px solid var(--card-bg-color);
-    position: relative;
     justify-content: center;
-    /* מרכוז הכותרת */
+    padding: 10px 16px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--glass-border);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    min-height: 64px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
-.back-button {
-    color: var(--action-color);
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    position: absolute;
-    /* ב-RTL, צד ימין הוא ה"התחלה" (Back) */
-    right: 16px;
-    padding: 10px;
-    z-index: 10;
+.header-title-container.branding-mode {
+    gap: 10px;
+    justify-content: flex-start;
+    width: 100%;
+    padding-right: 8px;
+}
+
+.branding-logo {
+    width: 32px;
+    height: 32px;
+}
+
+.header-branding-title {
+    font-size: 1.6rem;
+    font-weight: 900;
+    margin: 0;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #ffffff 0%, #a0a0c0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-family: 'Outfit', sans-serif;
 }
 
 .header-title {
-    font-size: 18px;
+    font-size: 1.1rem;
     font-weight: 700;
-    color: var(--text-primary);
     margin: 0;
-    max-width: calc(100% - 140px);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: center;
+    color: #efefef;
 }
 
-/* New shared class for header icons */
-.header-icon-btn {
-    padding: 10px;
+.back-button {
+    position: absolute;
+    right: 16px;
+    color: var(--accent-color);
+    font-weight: 600;
     cursor: pointer;
-    color: var(--text-primary);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.2s;
+}
+
+.back-button:hover {
+    opacity: 0.8;
+}
+
+.header-icon-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    transition: background-color 0.2s;
+    padding: 8px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.header-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .header-icon-btn:active {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.header-icon-btn svg {
-    display: block;
-}
-
-/* Deprecated: replaced by header-left-actions container */
-.header-options-button {
-    position: absolute;
-    left: 16px; 
-    top: calc(40px + env(safe-area-inset-top));
-    padding: 10px;
-    z-index: 10;
-    cursor: pointer;
-    color: var(--text-primary);
+    transform: translateY(0);
 }

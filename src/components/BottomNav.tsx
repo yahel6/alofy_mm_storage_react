@@ -22,8 +22,23 @@ const GroupsIcon = () => (
 
 
 const BottomNav = () => {
-  const { currentUser, groups } = useDatabase();
-  const isGroupOwner = groups && currentUser && groups.some(g => g.ownerId === currentUser.uid);
+  const { currentUser, groups, users } = useDatabase();
+
+  // בדיקה אם המשתמש הוא בעלים או מנהל של לפחות קבוצה אחת
+  const managedGroups = groups.filter(g =>
+    currentUser && (g.ownerId === currentUser.uid || g.admins?.includes(currentUser.uid))
+  );
+  const isManager = managedGroups.length > 0;
+
+  // בדיקה אם יש התראות (בקשות חדשות שלא נראו)
+  const hasNotifications = managedGroups.some(group => {
+    if (!group.pendingRequests || group.pendingRequests.length === 0) return false;
+
+    const lastRequest = group.lastRequestTimestamp || "";
+    const lastSeen = currentUser?.lastSeenRequests?.[group.id] || "";
+
+    return lastRequest > lastSeen;
+  });
 
   return (
     <nav className="bottom-nav">
@@ -42,16 +57,58 @@ const BottomNav = () => {
         <WarehouseIcon />
         מחסן
       </NavLink>
-      {isGroupOwner && (
-        <NavLink to="/groups" className="nav-item">
+      {isManager && (
+        <NavLink to="/groups" className="nav-item" style={{ position: 'relative' }}>
           <GroupsIcon />
           ניהול קבוצות
+          {hasNotifications && (
+            <div className="notification-badge" style={{
+              position: 'absolute',
+              top: '2px',
+              right: '25%',
+              background: 'var(--status-red)',
+              color: 'white',
+              width: '16px',
+              height: '16px',
+              borderRadius: '50%',
+              fontSize: '11px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              boxShadow: '0 0 5px rgba(0,0,0,0.5)',
+              border: '2px solid var(--card-bg-color)'
+            }}>
+              !
+            </div>
+          )}
         </NavLink>
       )}
       {currentUser?.role === 'admin' && (
-        <NavLink to="/admin/users" className="nav-item">
+        <NavLink to="/admin/users" className="nav-item" style={{ position: 'relative' }}>
           <AdminUsersIcon />
           ניהול משתמשים
+          {users.some(u => !u.approved) && (
+            <div className="notification-badge" style={{
+              position: 'absolute',
+              top: '2px',
+              right: '25%',
+              background: 'var(--status-red)',
+              color: 'white',
+              width: '16px',
+              height: '16px',
+              borderRadius: '50%',
+              fontSize: '11px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              boxShadow: '0 0 5px rgba(0,0,0,0.5)',
+              border: '2px solid var(--card-bg-color)'
+            }}>
+              !
+            </div>
+          )}
         </NavLink>
       )}
 

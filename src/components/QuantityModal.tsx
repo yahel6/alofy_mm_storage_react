@@ -9,11 +9,12 @@ interface QuantityModalProps {
 }
 
 const QuantityModal: React.FC<QuantityModalProps> = ({ title, maxQuantity, onConfirm, onCancel }) => {
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(maxQuantity);
 
     const handleSubmit = () => {
-        if (quantity > 0 && quantity <= maxQuantity) {
-            onConfirm(quantity);
+        const val = Number(quantity);
+        if (val > 0 && val <= maxQuantity) {
+            onConfirm(val);
         }
     };
 
@@ -57,7 +58,7 @@ const QuantityModal: React.FC<QuantityModalProps> = ({ title, maxQuantity, onCon
 
                 <div className="modal-actions">
                     <button className="modal-button btn-cancel" onClick={onCancel}>ביטול</button>
-                    <button className="modal-button btn-confirm" onClick={handleSubmit}>אישור</button>
+                    <button className="modal-button btn-edit-details" onClick={handleSubmit}>אישור</button>
                 </div>
             </div>
         </div>

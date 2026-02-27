@@ -3,6 +3,26 @@
 
 /* סגנונות שהועתקו מ-index.css הישן */
 
+.welcome-section {
+    padding: 24px 0 16px;
+    text-align: right;
+    direction: rtl;
+}
+
+.welcome-text {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0;
+    color: #fff;
+    letter-spacing: -0.5px;
+}
+
+.welcome-subtitle {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin: 4px 0 0;
+}
+
 .dashboard-card {
     background-color: var(--card-bg-color);
     border-radius: var(--border-radius);

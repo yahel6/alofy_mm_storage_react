@@ -18,7 +18,8 @@ const statusMap = {
   'charging': { text: 'בטעינה', class: 'status-charging' },
   'broken': { text: 'לא כשיר', class: 'status-broken' },
   'repair': { text: 'בתיקון', class: 'status-repair' },
-  'loaned': { text: 'בפעילות', class: 'status-loaned' }
+  'loaned': { text: 'בפעילות', class: 'status-loaned' },
+  'missing': { text: 'חסר', class: 'status-missing' }
 };
 
 const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems, onLongPress }) => {
@@ -69,7 +70,8 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
   return (
     <div
       className="equipment-item-content"
-      style={{ display: 'flex', alignItems: 'center' }}
+      style={{ display: 'flex', alignItems: 'center', userSelect: 'none', WebkitTouchCallout: 'none' }}
+      onContextMenu={(e) => e.preventDefault()}
       onMouseMove={endPress}
       onMouseDown={startPress}
       onMouseUp={endPress}
@@ -99,9 +101,9 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
         <div className="equipment-details" style={{ minWidth: 0 }}>
           <div className="equipment-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', minWidth: 0 }}>
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
-            {item.quantity && item.quantity > 1 && (
-              <span style={{ fontSize: '0.8em', color: '#aaa', flexShrink: 0 }}>
-                (x{item.quantity})
+            {item.quantity && Number(item.quantity) > 1 && (
+              <span className="quantity-badge">
+                {Number(item.quantity)}
               </span>
             )}
             {/* New Button for Sub-Items */}

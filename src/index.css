@@ -1,5 +1,9 @@
 /* src/index.css */
 
+* {
+    box-sizing: border-box;
+}
+
 
 /* --- הוסף את הקוד הזה --- */
 
@@ -10,21 +14,40 @@ body,
     width: 100%;
     margin: 0;
     padding: 0;
-    /* Removed overflow: hidden to allow natural scroll if inner containers fail */
+    overflow-x: hidden;
+    /* Prevent horizontal scroll */
+    position: relative;
+}
+
+body {
+    overscroll-behavior-y: none;
+    /* Prevent pull-to-refresh if needed, optional but often good for PWA */
+    touch-action: manipulation;
+    /* Faster taps */
 }
 
 :root {
-    --bg-color: #121212;
-    --card-bg-color: #2a2a2a;
-    --input-bg-color: #3a3a3a;
+    --bg-color: #0d0d12;
+    /* Deeper Indigo background */
+    --card-bg-color: #1a1a24;
+    --input-bg-color: #252533;
     --text-primary: #ffffff;
-    --text-secondary: #b0b0b0;
-    --action-color: #34b7eb;
-    --status-green: #34c759;
-    --status-red: #ff3b30;
-    --status-orange: #ff9500;
-    --status-grey: #8e8e93;
-    --border-radius: 12px;
+    --text-secondary: #a0a0c0;
+    --primary-color: #7c4dff;
+    /* Vibrant Purple */
+    --accent-color: #00e5ff;
+    /* Neon Cyan */
+    --action-color: #7c4dff;
+    --status-green: #00e676;
+    --status-red: #ff5252;
+    --status-orange: #ffd740;
+    --status-grey: #78909c;
+    --border-radius: 16px;
+
+    /* Design Tokens */
+    --glass-bg: rgba(26, 26, 36, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glow-shadow: 0 0 15px rgba(124, 77, 255, 0.4);
 }
 
 body {

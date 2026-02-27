@@ -23,8 +23,8 @@ export default defineConfig({
 
       },
       manifest: {
-        name: "מלאי אלופי",
-        short_name: "מלאי אלופי",
+        name: "Ordo - מערכת לניהול מחסן",
+        short_name: "Ordo",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#121212",
@@ -32,12 +32,12 @@ export default defineConfig({
         "orientation": "portrait-primary",
         icons: [
           {
-            "src": "/realdimond.png",
+            "src": "/ordo-logo.png",
             "type": "image/png",
             "sizes": "192x192"
           },
           {
-            "src": "/realdimond.png",
+            "src": "/ordo-logo.png",
             "type": "image/png",
             "sizes": "512x512"
           }

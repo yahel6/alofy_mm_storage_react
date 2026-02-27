@@ -11,6 +11,7 @@ import ResolveGapModal from '../components/ResolveGapModal';
 import StatusModal from '../components/StatusModal';
 import ValidationModal from '../components/ValidationModal';
 import FilterChips from '../components/FilterChips';
+import LoadingScreen from '../components/LoadingScreen';
 import {
   checkoutActivityEquipment,
   checkinActivityEquipment,
@@ -18,7 +19,7 @@ import {
   bulkValidateItems,
   bulkUpdateCategory,
   bulkUpdateStatus,
-  splitItem
+  updateGroupStatusByQuantity
 } from '../firebaseUtils';
 import type { EquipmentItem } from '../types';
 import QuantityModal from '../components/QuantityModal';
@@ -44,8 +45,8 @@ function ActivityDetailsPage() {
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
 
   // State for Modals
-  const [gapItem, setGapItem] = useState<EquipmentItem | null>(null);
-  const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null);
+  const [gapItemGroup, setGapItemGroup] = useState<EquipmentItem[] | null>(null);
+  const [selectedItemGroup, setSelectedItemGroup] = useState<EquipmentItem[] | null>(null);
   const [validationModalItem, setValidationModalItem] = useState<EquipmentItem | null>(null);
 
   // Enhancement State
@@ -57,7 +58,7 @@ function ActivityDetailsPage() {
   // Bulk Action Modals State
   const [bulkAction, setBulkAction] = useState<'status' | 'category' | null>(null);
   const [tempSelection, setTempSelection] = useState<string>('');
-  const [splitCandidate, setSplitCandidate] = useState<EquipmentItem | null>(null);
+  const [splitCandidateGroup, setSplitCandidateGroup] = useState<EquipmentItem[] | null>(null);
 
   const toggleSelectionMode = () => {
     globalToggleSelectionMode(scopeId);
@@ -86,19 +87,21 @@ function ActivityDetailsPage() {
   };
 
   const handleSplitConfirm = async (quantity: number) => {
-    if (!splitCandidate) return;
+    if (!splitCandidateGroup) return;
 
-    const originalQuantity = splitCandidate.quantity || 1;
-    if (quantity < originalQuantity) {
-      const newItemId = await splitItem(splitCandidate.id, quantity, {});
-      if (newItemId) {
-        await performActionOnIds([newItemId]);
-      }
+    const totalQuantity = splitCandidateGroup.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+
+    if (quantity < totalQuantity) {
+      await updateGroupStatusByQuantity(splitCandidateGroup, quantity, tempSelection as any);
+      alert('הפיצול והעדכון בוצעו בהצלחה');
     } else {
-      await performActionOnIds([splitCandidate.id]);
+      await performActionOnIds(splitCandidateGroup.map(i => i.id));
     }
 
-    setSplitCandidate(null);
+    setSplitCandidateGroup(null);
+    clearSelection(scopeId);
+    globalToggleSelectionMode(scopeId);
+    setBulkAction(null);
   };
 
   const performActionOnIds = async (ids: string[]) => {
@@ -129,13 +132,12 @@ function ActivityDetailsPage() {
     if (selectedItemIds.size === 0) return;
 
     const ids = Array.from(selectedItemIds);
+    const selectedItems = equipment.filter(e => selectedItemIds.has(e.id));
+    const totalSelectedQty = selectedItems.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
 
-    if (ids.length === 1) {
-      const item = equipment.find(e => e.id === ids[0]);
-      if (item && item.quantity && item.quantity > 1) {
-        setSplitCandidate(item);
-        return;
-      }
+    if (totalSelectedQty > 1 && bulkAction === 'status') {
+      setSplitCandidateGroup(selectedItems);
+      return;
     }
 
     await performActionOnIds(ids);
@@ -241,7 +243,7 @@ function ActivityDetailsPage() {
   }, [activity, finalAssignedItems]);
 
   if (isLoading) {
-    return <div>טוען פרטי פעילות...</div>;
+    return <LoadingScreen message="טוען פרטי פעילות..." />;
   }
 
   if (!activity) {
@@ -279,43 +281,45 @@ function ActivityDetailsPage() {
 
   // --- 3. הוספת Handlers עבור המודאל החדש ---
   const handleManageGapItem = () => {
-    if (gapItem) {
-      setGapItem(null); // סגור מודאל פער
-      setSelectedItem(gapItem); // פתח מודאל סטטוס
+    if (gapItemGroup) {
+      setGapItemGroup(null); // סגור מודאל פער
+      setSelectedItemGroup(gapItemGroup); // פתח מודאל סטטוס
     }
   };
 
   const handleRemoveGapItem = async () => {
-    if (gapItem && activity) {
-      await removeItemFromActivity(activity.id, gapItem.id);
-      setGapItem(null); // סגור מודאל פער
-      // אין צורך לרענן, onSnapshot יעשה זאת
+    if (gapItemGroup && activity) {
+      // Remove all items in the group from activity? Typically it's just one document but for consistency:
+      for (const item of gapItemGroup) {
+        await removeItemFromActivity(activity.id, item.id);
+      }
+      setGapItemGroup(null); // סגור מודאל פער
     }
   };
 
-  const handleItemClick = (item: EquipmentItem) => {
+  const handleItemClick = (group: EquipmentItem[]) => {
     if (isSelectionMode) {
-      toggleItemSelection(item.id);
+      group.forEach(item => toggleItemSelection(item.id));
       return;
     }
 
     if (isValidationMode) {
-      setValidationModalItem(item);
+      setValidationModalItem(group[0]);
     } else {
-      setSelectedItem(item);
+      setSelectedItemGroup(group);
     }
   };
 
-  const handleGapItemClick = (item: EquipmentItem) => {
+  const handleGapItemClick = (group: EquipmentItem[]) => {
     if (isSelectionMode) {
-      toggleItemSelection(item.id);
+      group.forEach(item => toggleItemSelection(item.id));
       return;
     }
 
     if (isValidationMode) {
-      setValidationModalItem(item);
+      setValidationModalItem(group[0]);
     } else {
-      setGapItem(item);
+      setGapItemGroup(group);
     }
   };
 
@@ -326,7 +330,7 @@ function ActivityDetailsPage() {
   const groupByName = (items: EquipmentItem[]) => {
     const groups: { [key: string]: EquipmentItem[] } = {};
     items.forEach(item => {
-      const key = `${item.name}-${item.status}`;
+      const key = `${item.name}`; // Simplified grouping by name first
       if (!groups[key]) groups[key] = [];
       groups[key].push(item);
     });
@@ -399,7 +403,7 @@ function ActivityDetailsPage() {
         displayGroups[key] = { items: [], quantity: 0 };
       }
       displayGroups[key].items.push(item);
-      displayGroups[key].quantity += (item.quantity || 1);
+      displayGroups[key].quantity += (Number(item.quantity) || 1);
     });
 
     const isMissingGroup = finalMissingItems.some(i => i.id === itemOrGroup[0].id);
@@ -414,7 +418,7 @@ function ActivityDetailsPage() {
           const isSelected = allIds.every(id => selectedItemIds.has(id));
 
           const isMissing = finalMissingItems.some(i => i.id === first.id);
-          const onClick = isMissing ? () => handleGapItemClick(first) : () => handleItemClick(first);
+          const onClick = isMissing ? () => handleGapItemClick(group.items) : () => handleItemClick(group.items);
 
           const virtualItem = {
             ...first,
@@ -667,12 +671,12 @@ function ActivityDetailsPage() {
 
       {renderBulkActionModal()}
 
-      {splitCandidate && (
+      {splitCandidateGroup && (
         <QuantityModal
-          onCancel={() => setSplitCandidate(null)}
+          onCancel={() => setSplitCandidateGroup(null)}
           onConfirm={handleSplitConfirm}
-          maxQuantity={splitCandidate.quantity || 1}
-          title={`פיצול פריט: ${splitCandidate.name}`}
+          maxQuantity={splitCandidateGroup.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}
+          title={`פיצול פריט: ${splitCandidateGroup[0].name}`}
         />
       )}
       {!isValidationMode && (
@@ -711,20 +715,20 @@ function ActivityDetailsPage() {
       )}
 
       {/* ייתכן שנרצה לא לאפשר טיפול בפערים בזמן מצב ווידוא, אבל השארתי את זה פתוח ב-handleItemClick */}
-      {gapItem && activity && !isValidationMode && (
+      {gapItemGroup && activity && !isValidationMode && (
         <ResolveGapModal
-          item={gapItem}
-          onClose={() => setGapItem(null)}
+          item={gapItemGroup[0]}
+          onClose={() => setGapItemGroup(null)}
           onManageItem={handleManageGapItem}
           onRemoveItem={handleRemoveGapItem}
         />
       )}
 
       {/* מודאל לניהול סטטוס (יכול להיפתח ע"י המודאל פער) */}
-      {selectedItem && (
+      {selectedItemGroup && (
         <StatusModal
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
+          groupItems={selectedItemGroup}
+          onClose={() => setSelectedItemGroup(null)}
         />
       )}
 

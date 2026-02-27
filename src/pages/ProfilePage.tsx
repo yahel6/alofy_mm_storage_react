@@ -59,7 +59,7 @@ const ProfilePage: React.FC = () => {
                         }}>
                             {displayName.charAt(0).toUpperCase()}
                         </div>
-                        <div style={{ color: '#aaa' }}>{currentUser?.email}</div>
+                        <div style={{ color: '#aaa', overflowWrap: 'anywhere' }}>{currentUser?.email}</div>
                     </div>
 
                     <div className="form-group">
@@ -129,12 +129,28 @@ const ProfilePage: React.FC = () => {
                                         borderRadius: '8px',
                                         display: 'flex',
                                         justifyContent: 'space-between',
-                                        alignItems: 'center'
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                        gap: '12px'
                                     }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <span>{group.name}</span>
                                             {group.ownerId === currentUser?.uid && (
                                                 <span style={{ fontSize: '0.8em', color: 'var(--action-color)', background: 'rgba(var(--action-color-rgb), 0.1)', padding: '2px 6px', borderRadius: '4px' }}>מנהל</span>
+                                            )}
+                                            {((group.ownerId === currentUser?.uid) || (group.admins?.includes(currentUser?.uid || ''))) && group.pendingRequests && group.pendingRequests.length > 0 && (
+                                                <div style={{
+                                                    background: 'var(--status-red)',
+                                                    color: 'white',
+                                                    width: '14px',
+                                                    height: '14px',
+                                                    borderRadius: '50%',
+                                                    fontSize: '10px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontWeight: 'bold'
+                                                }}>!</div>
                                             )}
                                         </div>
                                         <button

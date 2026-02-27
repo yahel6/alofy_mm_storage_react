@@ -9,6 +9,8 @@ export interface AppUser {
   role: string;
   /** רשימת מזהי קבוצות שהמשתמש חבר בהן */
   groupIds?: string[];
+  /** מפה של מזהה קבוצה -> זמן אחרון שבו המשתמש ראה את בקשות ההצטרפות */
+  lastSeenRequests?: { [groupId: string]: string };
 }
 
 // טיפוס קבוצה
@@ -19,6 +21,10 @@ export interface Group {
   ownerId: string;
   /** רשימת ה-UIDs של חברי הקבוצה */
   members: string[];
+  /** רשימת ה-UIDs של מנהלי הקבוצה (יכולים לנהל חברים) */
+  admins?: string[];
+  /** זמן הבקשה האחרונה לקבוצה */
+  lastRequestTimestamp?: string;
   /** רשימת בקשות הצטרפות (ממתינות לאישור) */
   pendingRequests: string[];
 }
@@ -33,6 +39,9 @@ export interface Warehouse {
   groupId?: string;
 }
 
+// סוגי הסטטוסים האפשריים לפריט
+export type EquipmentStatus = 'available' | 'charging' | 'broken' | 'repair' | 'loaned' | 'missing';
+
 // טיפוס פריט ציוד
 export interface EquipmentItem {
   id: string;
@@ -41,7 +50,7 @@ export interface EquipmentItem {
   /** קטגוריה בתוך המחסן (אופציונלי) */
   category?: string | null;
   managerUserId: string;
-  status: 'available' | 'charging' | 'broken' | 'repair' | 'loaned';
+  status: EquipmentStatus;
   lastCheckDate: string;
   loanedToUserId: string | null;
   assignedActivityId?: string | null;
@@ -53,7 +62,7 @@ export interface EquipmentItem {
 export interface SubItem {
   id: string;
   name: string;
-  status: 'available' | 'broken' | 'missing' | 'loaned';
+  status: EquipmentStatus;
 }
 
 // טיפוס פעילות

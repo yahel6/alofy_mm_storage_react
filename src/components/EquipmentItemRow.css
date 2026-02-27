@@ -13,6 +13,9 @@
     cursor: pointer;
     transition: background-color 0.2s;
     border-bottom: 1px solid #3a3a3a;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .equipment-item-content:hover {
@@ -125,6 +128,15 @@
     background-color: var(--status-grey);
 }
 
+.equipment-status.status-missing {
+    color: var(--status-red);
+    background-color: rgba(255, 59, 48, 0.1);
+}
+
+.equipment-status.status-missing .status-dot {
+    background-color: var(--status-red);
+}
+
 .equipment-item-content:hover {
     background-color: #333;
 }
@@ -139,6 +151,24 @@
     font-size: 14px;
     font-weight: 500;
     color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quantity-badge {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    /* Sleek white for quantity */
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 6px;
+    line-height: normal;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .equipment-secondary-info {

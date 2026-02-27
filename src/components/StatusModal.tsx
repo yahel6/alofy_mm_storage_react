@@ -2,35 +2,40 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { EquipmentItem } from '../types';
-import { updateEquipmentStatus, deleteEquipmentItem, validateEquipmentItem, splitItem } from '../firebaseUtils';
+import { updateEquipmentStatus, deleteEquipmentItem, updateGroupStatusByQuantity, bulkValidateItems } from '../firebaseUtils';
 import QuantityModal from './QuantityModal';
 import './Modal.css';
 
 const statusOptions = [
   { id: 'available', label: 'כשיר', dotClass: 'available' },
   { id: 'charging', label: 'בטעינה', dotClass: 'charging' },
-  { id: 'loaned', label: 'בפעילות', dotClass: 'loaned' },
   { id: 'repair', label: 'בתיקון', dotClass: 'repair' },
   { id: 'broken', label: 'לא כשיר', dotClass: 'broken' },
+  { id: 'missing', label: 'חסר', dotClass: 'missing' },
+  { id: 'loaned', label: 'בפעילות', dotClass: 'loaned' },
 ] as const;
 
 interface StatusModalProps {
-  item: EquipmentItem;
+  groupItems: EquipmentItem[];
   onClose: () => void;
 }
 
-const StatusModal: React.FC<StatusModalProps> = ({ item, onClose }) => {
+const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose }) => {
   const navigate = useNavigate();
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<EquipmentItem['status'] | null>(null);
 
-  const handleStatusChange = (statusId: EquipmentItem['status']) => {
-    // If quantity is > 1, ask if user wants to move all or split
-    if (item.quantity && item.quantity > 1) {
+  // Use the first item as a representative for name/ID for simple actions
+  const primaryItem = groupItems[0];
+  const totalQuantity = groupItems.reduce((sum, itm) => sum + (Number(itm.quantity) || 1), 0);
+
+  const handleStatusChange = async (statusId: EquipmentItem['status']) => {
+    // If total quantity is > 1, ask if user wants to move all or split
+    if (totalQuantity > 1) {
       setPendingStatus(statusId);
       setShowQuantityModal(true);
     } else {
-      updateEquipmentStatus(item.id, statusId);
+      updateEquipmentStatus(primaryItem.id, statusId);
       onClose();
     }
   };
@@ -38,32 +43,28 @@ const StatusModal: React.FC<StatusModalProps> = ({ item, onClose }) => {
   const handleQuantityConfirm = async (quantity: number) => {
     if (!pendingStatus) return;
 
-    if (item.quantity && quantity < item.quantity) {
-      // Split
-      await splitItem(item.id, quantity, { status: pendingStatus, loanedToUserId: null });
-      // Note: loanedToUserId=null because mostly we move from X to Y. 
-      // If moving TO loaned, we need user selection? handled by updateEquipmentStatus usually.
-      // But updateEquipmentStatus sets loanedToUserId=null if not 'loaned'.
-      // For now, simple status change implies resetting loan unless we add logic.
-    } else {
-      // Full update
-      updateEquipmentStatus(item.id, pendingStatus);
-    }
+    // Use the new group-aware update function
+    await updateGroupStatusByQuantity(groupItems, quantity, pendingStatus);
     onClose();
   };
 
   const handleDelete = () => {
-    deleteEquipmentItem(item.id);
+    // Current delete logic is document-based. For now, we delete specific documents?
+    // Or do we delete the whole group? Usually, users click a specific row.
+    // Let's stick to the primary item for delete/edit to avoid complexity unless asked.
+    deleteEquipmentItem(primaryItem.id);
     onClose();
   };
 
   const handleEdit = () => {
     onClose();
-    navigate(`/item/edit/${item.id}`);
+    navigate(`/item/edit/${primaryItem.id}`);
   };
 
   const handleValidate = async () => {
-    await validateEquipmentItem(item.id);
+    // Validate the whole group
+    const ids = groupItems.map(i => i.id);
+    await bulkValidateItems(ids);
     onClose();
   };
 
@@ -71,10 +72,10 @@ const StatusModal: React.FC<StatusModalProps> = ({ item, onClose }) => {
     <>
       <div className="modal-overlay active" onClick={onClose}>
         <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-          <h4 className="modal-title">שנה סטטוס עבור: {item.name}</h4>
-          {(item.quantity && item.quantity > 1) && (
-            <div style={{ textAlign: 'center', marginBottom: '10px', color: '#aaa', fontSize: '14px' }}>
-              (כמות: {item.quantity})
+          <h4 className="modal-title">שנה סטטוס עבור: {primaryItem.name}</h4>
+          {totalQuantity > 1 && (
+            <div className="modal-quantity-info">
+              כמות ביחידות: <span className="highlight-quantity">{totalQuantity}</span>
             </div>
           )}
 
@@ -97,7 +98,7 @@ const StatusModal: React.FC<StatusModalProps> = ({ item, onClose }) => {
             className="modal-button btn-danger"
             onClick={handleDelete}
           >
-            מחק פריט
+            מחק פריט מסוים
           </button>
 
           <button
@@ -116,10 +117,10 @@ const StatusModal: React.FC<StatusModalProps> = ({ item, onClose }) => {
         </div>
       </div>
 
-      {showQuantityModal && item.quantity && (
+      {showQuantityModal && (
         <QuantityModal
           title={`בחר כמות לשינוי סטטוס (${pendingStatus})`}
-          maxQuantity={item.quantity}
+          maxQuantity={totalQuantity}
           onConfirm={handleQuantityConfirm}
           onCancel={() => setShowQuantityModal(false)}
         />

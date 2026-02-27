@@ -10,13 +10,14 @@ import StatusModal from '../components/StatusModal';
 import WarehouseOptionsModal from '../components/WarehouseOptionsModal';
 import SubItemsModal from '../components/SubItemsModal';
 import ValidationModal from '../components/ValidationModal';
+import LoadingScreen from '../components/LoadingScreen';
 import {
   bulkUpdateCategory,
   bulkValidateItems,
   bulkUpdateStatus,
   bulkMoveItemsToWarehouse,
   bulkAssignItemsToActivity,
-  splitItem
+  updateGroupStatusByQuantity
 } from '../firebaseUtils';
 import type { EquipmentItem } from '../types';
 import '../components/Modal.css'; // Import generic modal styles
@@ -42,10 +43,10 @@ function WarehouseDetailsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
-  const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null);
+  const [selectedItemGroup, setSelectedItemGroup] = useState<EquipmentItem[] | null>(null);
   const [validationModalItem, setValidationModalItem] = useState<EquipmentItem | null>(null);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
-  const [subItemsModalItem, setSubItemsModalItem] = useState<EquipmentItem | null>(null);
+  const [subItemsModalItemId, setSubItemsModalItemId] = useState<string | null>(null);
 
   // Grouping State
   const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
@@ -55,7 +56,7 @@ function WarehouseDetailsPage() {
   const [tempSelection, setTempSelection] = useState<string>(''); // For storing the selected Status/WarehouseId/ActivityId
 
   // State for splitting
-  const [splitCandidate, setSplitCandidate] = useState<EquipmentItem | null>(null);
+  const [splitCandidateGroup, setSplitCandidateGroup] = useState<EquipmentItem[] | null>(null);
 
   const toggleSelectionMode = () => {
     globalToggleSelectionMode(scopeId);
@@ -68,19 +69,19 @@ function WarehouseDetailsPage() {
   };
 
   const handleSplitConfirm = async (quantity: number) => {
-    if (!splitCandidate) return;
+    if (!splitCandidateGroup) return;
 
-    const originalQuantity = splitCandidate.quantity || 1;
-    if (quantity < originalQuantity) {
-      const newItemId = await splitItem(splitCandidate.id, quantity, {});
-      if (newItemId) {
-        await performActionOnIds([newItemId]);
-      }
+    const totalQuantity = splitCandidateGroup.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+
+    if (quantity < totalQuantity) {
+      // פיצול חכם דרך הפונקציה החדשה
+      await updateGroupStatusByQuantity(splitCandidateGroup, quantity, tempSelection as any);
     } else {
-      await performActionOnIds([splitCandidate.id]);
+      const ids = splitCandidateGroup.map(i => i.id);
+      await performActionOnIds(ids);
     }
 
-    setSplitCandidate(null);
+    setSplitCandidateGroup(null);
   };
 
   const performActionOnIds = async (ids: string[]) => {
@@ -116,13 +117,15 @@ function WarehouseDetailsPage() {
 
     const ids = Array.from(selectedItemIds);
 
-    // If only ONE item is selected and it has quantity > 1, prompt for split
-    if (ids.length === 1) {
-      const item = equipment.find(e => e.id === ids[0]);
-      if (item && item.quantity && item.quantity > 1) {
-        setSplitCandidate(item);
-        return; // handleSplitConfirm will continue
-      }
+    // If only ONE document is selected but we want to split, it's tricky.
+    // However, the user usually selects rows.
+    // If we have selected multiple documents that form a group, we should split correctly.
+    const selectedItems = equipment.filter(e => selectedItemIds.has(e.id));
+    const totalSelectedQty = selectedItems.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+
+    if (totalSelectedQty > 1 && bulkAction === 'status') {
+      setSplitCandidateGroup(selectedItems);
+      return;
     }
 
     await performActionOnIds(ids);
@@ -210,7 +213,7 @@ function WarehouseDetailsPage() {
         displayGroups[key] = { items: [], quantity: 0 };
       }
       displayGroups[key].items.push(item);
-      displayGroups[key].quantity += (item.quantity || 1);
+      displayGroups[key].quantity += (Number(item.quantity) || 1);
     });
 
     return (
@@ -239,7 +242,7 @@ function WarehouseDetailsPage() {
             >
               <EquipmentItemRow
                 item={virtualItem}
-                onClick={() => handleItemClick(first)}
+                onClick={() => handleItemClick(group.items)}
                 isSelectable={isSelectionMode}
                 isSelected={isSelected}
                 // isIndeterminate={isPartial} // TODO: Update Row if needed
@@ -262,7 +265,7 @@ function WarehouseDetailsPage() {
                     });
                   }
                 }}
-                onOpenSubItems={(itm) => setSubItemsModalItem(itm)}
+                onOpenSubItems={(itm) => setSubItemsModalItemId(itm.id)}
               />
             </div>
           );
@@ -286,21 +289,24 @@ function WarehouseDetailsPage() {
     return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
   }, [filteredItems, isGroupedByCategory]);
 
-  const handleItemClick = (item: EquipmentItem) => {
+  const handleItemClick = (group: EquipmentItem[]) => {
     if (isSelectionMode) {
-      toggleItemSelection(item.id);
+      // Toggle each item in the group
+      group.forEach(item => {
+        toggleItemSelection(item.id);
+      });
       return;
     }
 
     if (isValidationMode) {
-      setValidationModalItem(item);
+      setValidationModalItem(group[0]);
     } else {
-      setSelectedItem(item);
+      setSelectedItemGroup(group);
     }
   };
 
   if (isLoading) {
-    return <div>טוען פרטי מחסן...</div>;
+    return <LoadingScreen message="טוען פרטי מחסן..." />;
   }
 
   const warehouse = warehouses.find(w => w.id === warehouseId);
@@ -330,10 +336,11 @@ function WarehouseDetailsPage() {
       content = (
         <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
           <option value="">בחר סטטוס...</option>
-          <option value="available">זמין</option>
+          <option value="available">כשיר</option>
           <option value="charging">בטעינה</option>
-          <option value="broken">תקול</option>
           <option value="repair">בתיקון</option>
+          <option value="broken">לא כשיר</option>
+          <option value="missing">חסר</option>
           <option value="loaned">בפעילות</option>
         </select>
       );
@@ -557,10 +564,10 @@ function WarehouseDetailsPage() {
         )}
       </div>
 
-      {selectedItem && (
+      {selectedItemGroup && (
         <StatusModal
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
+          groupItems={selectedItemGroup}
+          onClose={() => setSelectedItemGroup(null)}
         />
       )}
 
@@ -574,12 +581,12 @@ function WarehouseDetailsPage() {
 
       {renderBulkActionModal()}
 
-      {splitCandidate && (
+      {splitCandidateGroup && (
         <QuantityModal
-          onCancel={() => setSplitCandidate(null)}
+          onCancel={() => setSplitCandidateGroup(null)}
           onConfirm={handleSplitConfirm}
-          maxQuantity={splitCandidate.quantity || 1}
-          title={`פיצול פריט: ${splitCandidate.name}`}
+          maxQuantity={splitCandidateGroup.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}
+          title={`פיצול פריט: ${splitCandidateGroup[0].name}`}
         />
       )}
 
@@ -590,10 +597,10 @@ function WarehouseDetailsPage() {
         />
       )}
 
-      {subItemsModalItem && (
+      {subItemsModalItemId && (
         <SubItemsModal
-          item={subItemsModalItem}
-          onClose={() => setSubItemsModalItem(null)}
+          itemId={subItemsModalItemId}
+          onClose={() => setSubItemsModalItemId(null)}
         />
       )}
     </div>

@@ -3,6 +3,8 @@ import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import HeaderNav from '../components/HeaderNav';
+import LoadingScreen from '../components/LoadingScreen';
+import InstallPrompt from '../components/InstallPrompt';
 import './HomePage.css';
 
 
@@ -78,20 +80,18 @@ function HomePage() {
   };
 
   if (isLoading && equipment.length === 0) {
-    return (
-      <div>
-        <div className="page-header">
-          <h1 className="main-title">שלום, {currentUser?.displayName || '...'}</h1>
-          <div className="subtitle">טוען נתונים...</div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="טוען מערכת Ordo..." />;
   }
 
   return (
     <div>
-      <HeaderNav title={`שלום, ${currentUser?.displayName || '...'}`} />
+      <HeaderNav title="Ordo" showBranding={true} />
       <div className="container">
+        <div className="welcome-section">
+          <h1 className="welcome-text">שלום, {currentUser?.displayName || '...'} 👋</h1>
+          <p className="welcome-subtitle">הנה מה שקורה היום במחסן</p>
+        </div>
+
         {/* --- כרטיס "דורש טיפול" --- */}
         <div className="dashboard-card" id="attention-card">
           <div className="card-header">
@@ -158,6 +158,7 @@ function HomePage() {
           </div>
         </div>
 
+        <InstallPrompt />
       </div>
     </div>
   );

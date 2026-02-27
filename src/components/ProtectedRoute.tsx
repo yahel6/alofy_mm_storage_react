@@ -3,13 +3,14 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig'; // מייבאים את משתנה האימות
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Navigate } from 'react-router-dom'; // זה כלי ה"זריקה" (redirect)
+import LoadingScreen from './LoadingScreen';
 
 // הרכיב הזה מקבל "ילדים" (children)
 // הילדים האלה יהיו כל האפליקציה שלנו
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   // state שיחזיק את המשתמש
   const [user, setUser] = useState<User | null>(null);
-  const [approved, setApproved] = useState<boolean|null>(null);
+  const [approved, setApproved] = useState<boolean | null>(null);
 
   // state שיגיד לנו אם סיימנו לבדוק
   const [isLoading, setIsLoading] = useState(true);
@@ -31,13 +32,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       const snap = await getDoc(doc(db, 'users', user.uid));
       if (!snap.exists()) {
         // גיבוי: צור כ-pending (נדיר אם ensureUserDoc רץ)
-        await setDoc(doc(db,'users',user.uid), {
+        await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid, email: user.email ?? null, displayName: user.displayName ?? '',
           role: 'pending', approved: false
         });
         setApproved(false);
       }
-      
+
       // סיימנו לבדוק
       setIsLoading(false);
     });
@@ -48,7 +49,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // 1. אם אנחנו עדיין בודקים, נציג הודעת טעינה
   if (isLoading) {
-    return <div>טוען נתוני משתמש...</div>;
+    return <LoadingScreen message="מאמת נתוני משתמש..." />;
   }
 
   // 2. אם סיימנו לבדוק *ואין* משתמש
@@ -69,7 +70,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   // ...אז תציג את הילדים (שזה יהיה <App />)
-    return children;
+  return children;
 };
 
 export default ProtectedRoute;
