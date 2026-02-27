@@ -1,8 +1,8 @@
 // src/pages/EquipmentFormPage.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
-import { addNewEquipment, updateEquipmentItem } from '../firebaseUtils';
+import { addNewEquipment, updateEquipmentItem, calculateDerivedStatus } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css'; // ייבוא עיצוב הטופס
 import type { EquipmentItem, Warehouse } from '../types';
@@ -13,7 +13,8 @@ type EquipmentFormData = Omit<EquipmentItem, 'id' | 'loanedToUserId'>;
 function EquipmentFormPage() {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
-  const { equipment, users, warehouses, isLoading } = useDatabase();
+  const { equipment, users, warehouses, isLoading, currentUser } = useDatabase();
+  const [searchParams] = useSearchParams();
 
   const isEditMode = !!itemId;
 
@@ -27,6 +28,22 @@ function EquipmentFormPage() {
     quantity: 1,
     subItems: [],
   });
+
+  // אפקט להגדרת ברירות מחדל (מחסן ומשתמש)
+  useEffect(() => {
+    if (!isEditMode) {
+      const defaultWarehouseId = searchParams.get('warehouseId') || '';
+      const defaultManagerId = currentUser?.uid || '';
+
+      if (defaultWarehouseId || defaultManagerId) {
+        setFormData(prev => ({
+          ...prev,
+          warehouseId: prev.warehouseId || defaultWarehouseId,
+          managerUserId: prev.managerUserId || defaultManagerId,
+        }));
+      }
+    }
+  }, [isEditMode, searchParams, currentUser]);
 
   // המחסן הנבחר מתוך הרשימה
   const selectedWarehouse: Warehouse | undefined = useMemo(
@@ -81,9 +98,16 @@ function EquipmentFormPage() {
       return;
     }
 
+    let finalValue: any = value;
+    if (id === 'quantity') {
+      finalValue = Number(value);
+    } else if (id === 'category' && value === '') {
+      finalValue = null;
+    }
+
     setFormData(prev => ({
       ...prev,
-      [id]: id === 'category' && value === '' ? null : value
+      [id]: finalValue
     }));
   };
 
@@ -144,15 +168,30 @@ function EquipmentFormPage() {
 
           <div className="form-group">
             <label htmlFor="quantity">כמות</label>
-            <input
-              type="number"
-              id="quantity"
-              placeholder="1"
-              min="1"
-              value={formData.quantity ?? 1}
-              onChange={handleChange}
-              style={{ width: '100px' }} // שדה קטן יותר
-            />
+            <div className="quantity-selector">
+              <button
+                type="button"
+                className="qty-btn"
+                onClick={() => setFormData(p => ({ ...p, quantity: Math.max(1, (Number(p.quantity) || 1) - 1) }))}
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="quantity"
+                className="qty-input"
+                value={formData.quantity ?? 1}
+                onChange={handleChange}
+                min="1"
+              />
+              <button
+                type="button"
+                className="qty-btn"
+                onClick={() => setFormData(p => ({ ...p, quantity: (Number(p.quantity) || 1) + 1 }))}
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <div className="form-group">
@@ -213,8 +252,10 @@ function EquipmentFormPage() {
             >
               <option value="available">כשיר</option>
               <option value="charging">בטעינה</option>
+              <option value="loaned">בפעילות</option>
               <option value="repair">בתיקון</option>
               <option value="broken">לא כשיר</option>
+              <option value="missing">חסר</option>
             </select>
           </div>
 
@@ -280,24 +321,42 @@ function EquipmentFormPage() {
                       onChange={(e) => {
                         const newSubItems = [...(formData.subItems || [])];
                         newSubItems[index] = { ...newSubItems[index], status: e.target.value as any };
-                        setFormData({ ...formData, subItems: newSubItems });
+                        const derivedStatus = calculateDerivedStatus(newSubItems);
+                        setFormData({ ...formData, subItems: newSubItems, status: derivedStatus });
                       }}
                       style={{ padding: '8px', borderRadius: '4px', border: '1px solid #444', background: '#333', color: 'white' }}
                     >
                       <option value="available">כשיר</option>
-                      <option value="broken">תקול</option>
+                      <option value="charging">בטעינה</option>
+                      <option value="loaned">בפעילות</option>
+                      <option value="repair">בתיקון</option>
+                      <option value="broken">לא כשיר</option>
                       <option value="missing">חסר</option>
-                      <option value="loaned">מושאל</option>
                     </select>
                     <button
                       type="button"
                       onClick={() => {
-                        const newSubItems = formData.subItems?.filter((_, i) => i !== index);
-                        setFormData({ ...formData, subItems: newSubItems });
+                        if (window.confirm(`האם אתה בטוח שברצונך להסיר את "${sub.name || 'הפריט'}"?`)) {
+                          const newSubItems = formData.subItems?.filter((_, i) => i !== index) || [];
+                          const derivedStatus = calculateDerivedStatus(newSubItems);
+                          setFormData({ ...formData, subItems: newSubItems, status: derivedStatus });
+                        }
                       }}
-                      style={{ background: 'transparent', border: 'none', color: '#ff453a', cursor: 'pointer', fontSize: '1.2em' }}
+                      style={{
+                        background: 'rgba(255, 69, 58, 0.1)',
+                        border: '1px solid rgba(255, 69, 58, 0.4)',
+                        color: '#ff453a',
+                        cursor: 'pointer',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginLeft: '4px'
+                      }}
+                      title="הסר פריט פנימי"
                     >
-                      ✕
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                     </button>
                   </div>
                 ))}

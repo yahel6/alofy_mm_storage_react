@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useState } from 'react';
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, matchPath } from "react-router-dom";
 import BottomNav from './components/BottomNav.tsx';
 import Fab from './components/Fab.tsx';
 import QuickAddModal from './components/QuickAddModal.tsx';
@@ -39,6 +39,10 @@ function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const location = useLocation();
 
+  // Detect if we are in a warehouse details page to pass context to the modal
+  const warehouseMatch = matchPath({ path: "/warehouses/:warehouseId" }, location.pathname);
+  const currentWarehouseId = warehouseMatch?.params.warehouseId;
+
   return (
     <div className="app-container">
       <main className="main-layout-wrapper">
@@ -54,6 +58,7 @@ function App() {
               width: '100%',
               height: '100%',
               overflowY: 'auto',
+              overflowX: 'hidden',
               WebkitOverflowScrolling: 'touch',
               paddingBottom: '120px', // Space for Bottom Nav
               top: 0,
@@ -71,6 +76,7 @@ function App() {
       <QuickAddModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+        warehouseId={currentWarehouseId}
       />
     </div>
   );

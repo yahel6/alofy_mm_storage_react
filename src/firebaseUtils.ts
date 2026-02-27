@@ -2,34 +2,85 @@ import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arra
 import { db } from './firebaseConfig';
 import type { EquipmentItem, Activity, Warehouse, Group } from './types';
 
-// סוגי הסטטוסים האפשריים
-type EquipmentStatus = EquipmentItem['status'];
+// סוגי הסטטוסים האפשריים לפריט (לפי סדר עדיפויות חומרה)
+export type EquipmentStatus = 'broken' | 'missing' | 'repair' | 'charging' | 'loaned' | 'available';
+const STATUS_PRIORITY: EquipmentStatus[] = ['broken', 'missing', 'repair', 'charging', 'loaned', 'available'];
+
+/**
+ * מחשב את הסטטוס הנגזר של פריט על פי תתי-הפריטים שלו
+ */
+export const calculateDerivedStatus = (subItems: any[]): EquipmentStatus => {
+  if (!subItems || subItems.length === 0) return 'available';
+
+  let highestPriorityIndex = STATUS_PRIORITY.length - 1;
+
+  subItems.forEach(sub => {
+    const priorityIndex = STATUS_PRIORITY.indexOf(sub.status);
+    if (priorityIndex !== -1 && priorityIndex < highestPriorityIndex) {
+      highestPriorityIndex = priorityIndex;
+    }
+  });
+
+  return STATUS_PRIORITY[highestPriorityIndex];
+};
 
 // --- פונקציות קיימות (ללא שינוי) ---
 
 /**
  * מעדכן סטטוס של פריט ציוד ספציפי ב-Firebase
  */
-export const updateEquipmentStatus = async (itemId: string, newStatus: EquipmentStatus) => {
+export const updateEquipmentStatus = async (itemId: string, newStatus: EquipmentStatus, loanedToUserId: string | null = null) => {
   console.log(`מעדכן סטטוס עבור ${itemId} ל-${newStatus}...`);
   const itemRef = doc(db, 'equipment', itemId);
 
-  const updateData: { status: EquipmentStatus, loanedToUserId?: string | null } = {
-    status: newStatus
+  const updateData: any = {
+    status: newStatus,
+    lastCheckDate: new Date().toISOString().split('T')[0]
   };
 
-  if (newStatus !== 'loaned') {
+  if (newStatus === 'loaned') {
+    updateData.loanedToUserId = loanedToUserId;
+  } else {
     updateData.loanedToUserId = null;
   }
-  // TODO: להוסיף לוגיקה לבחירת משתמש כשהסטטוס הוא 'loaned'
 
   try {
     await updateDoc(itemRef, updateData);
     console.log("עדכון סטטוס הצליח!");
     await checkForMerge(itemId); // Auto-Merge
+    return true;
   } catch (error) {
     console.error("שגיאה בעדכון סטטוס:", error);
-    alert("שגיאה בעדכון הסטטוס.");
+    return false;
+  }
+};
+
+/**
+ * מעדכן סטטוס של תת-פריט ומחשב מחדש את סטטוס ההורה
+ */
+export const updateSubItemStatus = async (itemId: string, subItemId: string, newStatus: EquipmentStatus) => {
+  const ref = doc(db, 'equipment', itemId);
+  try {
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+
+    const data = snap.data() as EquipmentItem;
+    const subItems = data.subItems || [];
+    const updatedSubItems = subItems.map(sub =>
+      sub.id === subItemId ? { ...sub, status: newStatus } : sub
+    );
+
+    const derivedStatus = calculateDerivedStatus(updatedSubItems);
+
+    await updateDoc(ref, {
+      subItems: updatedSubItems,
+      status: derivedStatus,
+      lastCheckDate: new Date().toISOString().split('T')[0]
+    });
+    return true;
+  } catch (error) {
+    console.error("Error updating sub-item status:", error);
+    return false;
   }
 };
 
@@ -115,6 +166,10 @@ export const addNewEquipment = async (itemData: Omit<EquipmentItem, 'id' | 'loan
  * מוסיף פעילות חדשה
  */
 export const addNewActivity = async (activityData: Omit<Activity, 'id' | 'equipmentRequiredIds' | 'equipmentMissingIds'>) => {
+  if (!activityData.groupId) {
+    alert('חובה לבחור קבוצה לפעילות.');
+    return null;
+  }
   try {
     const docRef = await addDoc(collection(db, "activities"), {
       ...activityData,
@@ -133,6 +188,10 @@ export const addNewActivity = async (activityData: Omit<Activity, 'id' | 'equipm
  * מעדכן פרטי פעילות קיימת (שם, אחראי, תאריך)
  */
 export const updateActivity = async (activityId: string, newData: Partial<Activity>) => {
+  if (newData.groupId === "") {
+    alert('חובה לבחור קבוצה לפעילות.');
+    return false;
+  }
   const activityRef = doc(db, "activities", activityId);
   try {
     const updateData = {
@@ -250,16 +309,24 @@ export const updateActivityEquipment = async (activityId: string, newEquipmentId
 }
 
 /** יצירת מחסן חדש (עם/בלי קטגוריות) */
-export const addNewWarehouse = async (data: { name: string; categories?: string[] }) => {
+export const addNewWarehouse = async (data: { name: string; categories?: string[]; groupId?: string }) => {
   const name = (data.name ?? '').trim();
   const categories = (data.categories ?? []).map(c => c.trim()).filter(Boolean);
+  const groupId = data.groupId;
+
   if (!name) {
     alert('שם מחסן לא יכול להיות ריק.');
     return null;
   }
+  if (!groupId) {
+    alert('חובה לבחור קבוצה למחסן.');
+    return null;
+  }
+
   try {
     const ref = await addDoc(collection(db, 'warehouses'), {
       name,
+      groupId,
       ...(categories.length ? { categories } : {})
     });
     return ref.id;
@@ -271,9 +338,11 @@ export const addNewWarehouse = async (data: { name: string; categories?: string[
 };
 
 /** עדכון מחסן קיים (כולל עדכון קטגוריות) */
-export const updateWarehouse = async (warehouseId: string, data: { name: string; categories?: string[] }) => {
+export const updateWarehouse = async (warehouseId: string, data: { name: string; categories?: string[]; groupId?: string }) => {
   const name = (data.name ?? '').trim();
   const categories = (data.categories ?? []).map(c => c.trim()).filter(Boolean);
+  const groupId = data.groupId;
+
   if (!warehouseId) {
     alert('שגיאה: חסר מזהה מחסן.');
     return false;
@@ -282,6 +351,11 @@ export const updateWarehouse = async (warehouseId: string, data: { name: string;
     alert('שם מחסן לא יכול להיות ריק.');
     return false;
   }
+  if (!groupId) {
+    alert('חובה לבחור קבוצה למחסן.');
+    return false;
+  }
+
   try {
     const ref = doc(db, 'warehouses', warehouseId);
     const snap = await getDoc(ref);
@@ -291,6 +365,7 @@ export const updateWarehouse = async (warehouseId: string, data: { name: string;
     }
     await updateDoc(ref, {
       name,
+      groupId,
       ...(categories ? { categories } : {})
     });
     return true;
@@ -736,6 +811,68 @@ export const splitItem = async (originalItemId: string, splitQuantity: number, n
 };
 
 /**
+ * מעדכן סטטוס לכמות מסוימת של פריטים מתוך קבוצת פריטים (אוסף מסמכים)
+ * מטפל אוטומטית בעדכון מלא או בפיצול לפי הצורך.
+ */
+export const updateGroupStatusByQuantity = async (
+  items: EquipmentItem[],
+  quantityToChange: number,
+  newStatus: EquipmentStatus
+) => {
+  console.log(`מעדכן סטטוס ל-${quantityToChange} פריטים מתוך קבוצה ל-${newStatus}...`);
+  const batch = writeBatch(db);
+  let remaining = quantityToChange;
+  const today = new Date().toISOString().split('T')[0];
+
+  for (const item of items) {
+    if (remaining <= 0) break;
+
+    const itemRef = doc(db, 'equipment', item.id);
+    const itemQty = Number(item.quantity) || 1;
+
+    if (remaining >= itemQty) {
+      // עדכון מלא למסמך הזה
+      batch.update(itemRef, {
+        status: newStatus,
+        loanedToUserId: null,
+        lastCheckDate: today
+      });
+      remaining -= itemQty;
+    } else {
+      // פיצול המסמך הזה
+      const newItemRef = doc(collection(db, 'equipment'));
+
+      // הקטנת הכמות במסמך המקורי
+      batch.update(itemRef, {
+        quantity: itemQty - remaining
+      });
+
+      // יצירת מסמך חדש עם הכמות שפוצלה
+      const { id, ...itemData } = item;
+      const newItem = {
+        ...itemData,
+        status: newStatus,
+        quantity: remaining,
+        loanedToUserId: null,
+        lastCheckDate: today
+      };
+      batch.set(newItemRef, newItem);
+
+      remaining = 0;
+    }
+  }
+
+  try {
+    await batch.commit();
+    console.log("עדכון קבוצתי לפי כמות הושלם.");
+    return true;
+  } catch (error) {
+    console.error("Error in updateGroupStatusByQuantity:", error);
+    return false;
+  }
+};
+
+/**
  * בודק אם ניתן למזג פריט זה עם פריט זהה (אותו שם, סטטוס, קטגוריה, מחסן)
  * אם כן: ממזג ומוחק את הפריט הנוכחי.
  */
@@ -797,32 +934,26 @@ export const checkForMerge = async (itemId: string) => {
 /**
  * יוצר קבוצה חדשה
  */
-export const createNewGroup = async (name: string, ownerId: string) => {
+export const createNewGroup = async (groupName: string, ownerId: string) => {
   try {
-    const groupRef = await addDoc(collection(db, 'groups'), {
-      name: name.trim(),
-      ownerId,
+    const docRef = await addDoc(collection(db, "groups"), {
+      name: groupName.trim(),
+      ownerId: ownerId,
       members: [ownerId],
+      admins: [], // התחלה עם רשימת מנהלים ריקה
       pendingRequests: []
     });
 
-    // עדכון המשתמש שיש לו קבוצה חדשה
-    const userRef = doc(db, 'users', ownerId);
-    const userSnap = await getDoc(userRef);
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
-      const groupIds = userData.groupIds || [];
-      if (!groupIds.includes(groupRef.id)) {
-        await updateDoc(userRef, {
-          groupIds: [...groupIds, groupRef.id]
-        });
-      }
-    }
+    // עדכון המשתמש עם ה-groupId החדש
+    const userRef = doc(db, "users", ownerId);
+    await updateDoc(userRef, {
+      groupIds: arrayUnion(docRef.id)
+    });
 
-    console.log(`קבוצה חדשה ${groupRef.id} נוצרה.`);
-    return groupRef.id;
+    console.log(`קבוצה חדשה ${docRef.id} נוצרה.`);
+    return docRef.id;
   } catch (error) {
-    console.error("שגיאה ביצירת קבוצה:", error);
+    console.error("שגיאה ביצירת קבוצה חדשה:", error);
     return null;
   }
 };
@@ -840,7 +971,6 @@ export const createGroupDetailed = async (
   try {
     const batch = writeBatch(db);
 
-    // 1. יצירת מסמך הקבוצה
     const groupRef = doc(collection(db, 'groups'));
     const groupId = groupRef.id;
     const members = Array.from(new Set([ownerId, ...initialMembers]));
@@ -849,26 +979,22 @@ export const createGroupDetailed = async (
       name: name.trim(),
       ownerId,
       members,
+      admins: [],
       pendingRequests: []
     });
 
-    // 2. עדכון חברות בקבוצה לכל המשתמשים
     for (const userId of members) {
       const userRef = doc(db, 'users', userId);
-      // הערה: במקרה אידיאלי היינו משתמשים ב-arrayUnion, אבל writeBatch דורש אובייקט מלא או עדכון שדות.
-      // מכיוון שאנחנו רוצים להיות בטוחים, נשתמש ב-update עם arrayUnion של Firebase.
       batch.update(userRef, {
         groupIds: arrayUnion(groupId)
       });
     }
 
-    // 3. שיוך מחסנים
     for (const wId of initialWarehouses) {
       const wRef = doc(db, 'warehouses', wId);
       batch.update(wRef, { groupId });
     }
 
-    // 4. שיוך פעילויות
     for (const aId of initialActivities) {
       const aRef = doc(db, 'activities', aId);
       batch.update(aRef, { groupId });
@@ -879,6 +1005,40 @@ export const createGroupDetailed = async (
   } catch (error) {
     console.error("שגיאה ביצירת קבוצה מפורטת:", error);
     return null;
+  }
+};
+
+/**
+ * מקדם משתמש לדרגת מנהל בקבוצה
+ */
+export const promoteToAdmin = async (groupId: string, userId: string) => {
+  const groupRef = doc(db, "groups", groupId);
+  try {
+    await updateDoc(groupRef, {
+      admins: arrayUnion(userId)
+    });
+    console.log(`משתמש ${userId} קודם למנהל בקבוצה ${groupId}`);
+    return true;
+  } catch (error) {
+    console.error("שגיאה בקידום למנהל:", error);
+    return false;
+  }
+};
+
+/**
+ * מוריד משתמש מדרגת מנהל לחבר רגיל
+ */
+export const demoteFromAdmin = async (groupId: string, userId: string) => {
+  const groupRef = doc(db, "groups", groupId);
+  try {
+    await updateDoc(groupRef, {
+      admins: arrayRemove(userId)
+    });
+    console.log(`משתמש ${userId} הורד מדרגת מנהל בקבוצה ${groupId}`);
+    return true;
+  } catch (error) {
+    console.error("שגיאה בהורדה מדרגת מנהל:", error);
+    return false;
   }
 };
 
@@ -902,19 +1062,33 @@ export const updateGroup = async (groupId: string, data: Partial<Group>) => {
 export const requestToJoinGroup = async (groupId: string, userId: string) => {
   try {
     const ref = doc(db, 'groups', groupId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return false;
-
-    const group = snap.data() as Group;
-    if (group.members.includes(userId)) return true; // כבר חבר
-    if (group.pendingRequests.includes(userId)) return true; // כבר ביקש
+    const now = new Date().toISOString();
 
     await updateDoc(ref, {
-      pendingRequests: [...group.pendingRequests, userId]
+      pendingRequests: arrayUnion(userId),
+      lastRequestTimestamp: now
     });
     return true;
   } catch (error) {
     console.error("שגיאה בבקשת הצטרפות:", error);
+    return false;
+  }
+};
+
+/**
+ * מעדכן את הזמן שבו המשתמש ראה את הבקשות בקבוצה מסוימת
+ */
+export const updateUserSeenRequests = async (userId: string, groupId: string) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const now = new Date().toISOString();
+
+    await updateDoc(userRef, {
+      [`lastSeenRequests.${groupId}`]: now
+    });
+    return true;
+  } catch (error) {
+    console.error("שגיאה בעדכון זמן צפייה בבקשות:", error);
     return false;
   }
 };
@@ -925,30 +1099,37 @@ export const requestToJoinGroup = async (groupId: string, userId: string) => {
 export const approveJoinRequest = async (groupId: string, userId: string) => {
   try {
     const groupRef = doc(db, 'groups', groupId);
-    const groupSnap = await getDoc(groupRef);
-    if (!groupSnap.exists()) return false;
-
-    const group = groupSnap.data() as Group;
-    const newPending = group.pendingRequests.filter(id => id !== userId);
-    const newMembers = [...group.members, userId];
+    const userRef = doc(db, 'users', userId);
 
     const batch = writeBatch(db);
     batch.update(groupRef, {
-      pendingRequests: newPending,
-      members: newMembers
+      pendingRequests: arrayRemove(userId),
+      members: arrayUnion(userId)
     });
-
-    const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    const currentGroups = userSnap.exists() ? userSnap.data().groupIds || [] : [];
-    if (!currentGroups.includes(groupId)) {
-      batch.update(userRef, { groupIds: [...currentGroups, groupId] });
-    }
+    batch.update(userRef, {
+      groupIds: arrayUnion(groupId)
+    });
 
     await batch.commit();
     return true;
   } catch (error) {
     console.error("שגיאה באישור בקשה:", error);
+    return false;
+  }
+};
+
+/**
+ * דחיית בקשת הצטרפות
+ */
+export const rejectJoinRequest = async (groupId: string, userId: string) => {
+  try {
+    const groupRef = doc(db, 'groups', groupId);
+    await updateDoc(groupRef, {
+      pendingRequests: arrayRemove(userId)
+    });
+    return true;
+  } catch (error) {
+    console.error("שגיאה בדחיית בקשה:", error);
     return false;
   }
 };
@@ -1007,22 +1188,6 @@ export const addMembersToGroup = async (groupId: string, userIds: string[]) => {
     return false;
   }
 };
-export const rejectJoinRequest = async (groupId: string, userId: string) => {
-  try {
-    const ref = doc(db, 'groups', groupId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return false;
-
-    const group = snap.data() as Group;
-    await updateDoc(ref, {
-      pendingRequests: group.pendingRequests.filter(id => id !== userId)
-    });
-    return true;
-  } catch (error) {
-    console.error("שגיאה בדחיית בקשה:", error);
-    return false;
-  }
-};
 
 /**
  * הסרת חבר מקבוצה
@@ -1035,23 +1200,23 @@ export const removeMemberFromGroup = async (groupId: string, userId: string) => 
 
     const group = groupSnap.data() as Group;
     if (group.ownerId === userId) {
-      alert("לא ניתן להסיר את מנהל הקבוצה.");
+      alert("לא ניתן להסיר את בעל הקבוצה.");
       return false;
     }
 
     const batch = writeBatch(db);
     batch.update(groupRef, {
-      members: group.members.filter(id => id !== userId)
+      members: arrayRemove(userId),
+      admins: arrayRemove(userId)
     });
 
     const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    if (userSnap.exists()) {
-      const currentGroups = userSnap.data().groupIds || [];
-      batch.update(userRef, { groupIds: currentGroups.filter((id: string) => id !== groupId) });
-    }
+    batch.update(userRef, {
+      groupIds: arrayRemove(groupId)
+    });
 
     await batch.commit();
+    console.log(`משתמש ${userId} הוסר מהקבוצה ${groupId}`);
     return true;
   } catch (error) {
     console.error("שגיאה בהסרת חבר:", error);
@@ -1068,6 +1233,7 @@ export const associateEntityWithGroup = async (entityType: 'warehouses' | 'activ
     await updateDoc(ref, { groupId });
     return true;
   } catch (error) {
+    console.error(`שגיאה בשיוך ${entityType} לקבוצה:`, error);
     return false;
   }
 };

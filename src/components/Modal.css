@@ -185,3 +185,17 @@
     }
 
     /* --- הוספת סגנון חדש --- */
+    .modal-quantity-info {
+        text-align: center;
+        margin-bottom: 20px;
+        color: var(--text-secondary);
+        font-size: 15px;
+        letter-spacing: 0.3px;
+    }
+
+    .highlight-quantity {
+        color: #fff;
+        font-weight: 800;
+        margin-right: 4px;
+        font-size: 1.1em;
+    }

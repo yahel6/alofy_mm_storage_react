@@ -1,20 +1,29 @@
 import React from 'react';
-import type { EquipmentItem } from '../types';
+import type { EquipmentStatus } from '../types';
+import { updateSubItemStatus } from '../firebaseUtils';
+import { useDatabase } from '../contexts/DatabaseContext';
 
 interface SubItemsModalProps {
-    item: EquipmentItem;
+    itemId: string;
     onClose: () => void;
 }
 
-const statusMap: Record<string, { text: string, color: string }> = {
-    'available': { text: 'כשיר', color: '#34c759' }, // Green
-    'broken': { text: 'תקול', color: '#ff3b30' },    // Red
-    'missing': { text: 'חסר', color: '#ff9500' },    // Orange
-    'loaned': { text: 'מושאל', color: '#8e8e93' },   // Grey
-};
+const statusOptions: { id: EquipmentStatus; text: string; dotClass: string }[] = [
+    { id: 'available', text: 'כשיר', dotClass: 'available' },
+    { id: 'charging', text: 'בטעינה', dotClass: 'charging' },
+    { id: 'repair', text: 'בתיקון', dotClass: 'repair' },
+    { id: 'broken', text: 'לא כשיר', dotClass: 'broken' },
+    { id: 'missing', text: 'חסר', dotClass: 'missing' },
+    { id: 'loaned', text: 'בפעילות', dotClass: 'loaned' },
+];
 
-const SubItemsModal: React.FC<SubItemsModalProps> = ({ item, onClose }) => {
-    const subItems = item.subItems || [];
+const SubItemsModal: React.FC<SubItemsModalProps> = ({ itemId, onClose }) => {
+    const { equipment } = useDatabase();
+    const item = equipment.find(e => e.id === itemId);
+    const subItems = item?.subItems || [];
+    const [openSubItemId, setOpenSubItemId] = React.useState<string | null>(null);
+
+    if (!item) return null;
 
     return (
         <div style={itemsModalOverlayStyle} onClick={onClose}>
@@ -31,26 +40,47 @@ const SubItemsModal: React.FC<SubItemsModalProps> = ({ item, onClose }) => {
                             <thead>
                                 <tr style={{ borderBottom: '1px solid #444', textAlign: 'right' }}>
                                     <th style={{ padding: '8px' }}>שם הפריט</th>
-                                    <th style={{ padding: '8px' }}>סטטוס</th>
+                                    <th style={{ padding: '8px', minWidth: '130px' }}>סטטוס</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {subItems.map(sub => {
-                                    const statusInfo = statusMap[sub.status] || { text: sub.status, color: '#999' };
+                                    const currentOpt = statusOptions.find(o => o.id === sub.status);
                                     return (
                                         <tr key={sub.id} style={{ borderBottom: '1px solid #333' }}>
                                             <td style={{ padding: '12px 8px' }}>{sub.name}</td>
                                             <td style={{ padding: '12px 8px' }}>
-                                                <span style={{
-                                                    padding: '4px 8px',
-                                                    borderRadius: '4px',
-                                                    backgroundColor: `${statusInfo.color}20`,
-                                                    color: statusInfo.color,
-                                                    fontSize: '0.9em',
-                                                    fontWeight: 'bold'
-                                                }}>
-                                                    {statusInfo.text}
-                                                </span>
+                                                <div className="sub-item-status-wrapper">
+                                                    <div
+                                                        className={`equipment-status status-${sub.status} sub-item-pill`}
+                                                        onClick={() => setOpenSubItemId(sub.id === openSubItemId ? null : sub.id)}
+                                                    >
+                                                        <span className="status-dot"></span>
+                                                        <span className="status-text">{currentOpt?.text}</span>
+                                                        <span className="chevron-icon">▾</span>
+                                                    </div>
+
+                                                    {openSubItemId === sub.id && (
+                                                        <>
+                                                            <div className="dropdown-backdrop" onClick={() => setOpenSubItemId(null)} />
+                                                            <div className="custom-status-dropdown">
+                                                                {statusOptions.map(opt => (
+                                                                    <div
+                                                                        key={opt.id}
+                                                                        className={`dropdown-item ${opt.id === sub.status ? 'active' : ''}`}
+                                                                        onClick={() => {
+                                                                            updateSubItemStatus(item.id, sub.id, opt.id);
+                                                                            setOpenSubItemId(null);
+                                                                        }}
+                                                                    >
+                                                                        <span className={`status-dot ${opt.dotClass}`}></span>
+                                                                        {opt.text}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -64,18 +94,94 @@ const SubItemsModal: React.FC<SubItemsModalProps> = ({ item, onClose }) => {
                     <button
                         onClick={onClose}
                         style={{
-                            padding: '8px 16px',
-                            borderRadius: '8px',
+                            padding: '10px 20px',
+                            borderRadius: '10px',
                             border: 'none',
-                            background: '#444',
+                            background: '#333',
                             color: 'white',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            fontSize: '14px'
                         }}
                     >
                         סגור
                     </button>
                 </div>
             </div>
+            <style>{`
+                .sub-item-status-wrapper {
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    position: relative;
+                }
+                .sub-item-pill {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 4px 10px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    border: 1px solid transparent;
+                    user-select: none;
+                }
+                .sub-item-pill:hover {
+                    opacity: 0.9;
+                    transform: scale(1.02);
+                }
+                .status-text {
+                    font-size: 12px;
+                    font-weight: 500;
+                }
+                .chevron-icon {
+                    font-size: 10px;
+                    opacity: 0.7;
+                    margin-left: -2px;
+                }
+                .custom-status-dropdown {
+                    position: absolute;
+                    top: 100%;
+                    right: 0;
+                    background: #2c2c2e;
+                    border: 1px solid #444;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+                    z-index: 1000;
+                    margin-top: 4px;
+                    min-width: 140px;
+                    overflow: hidden;
+                }
+                .dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 10px 14px;
+                    font-size: 13px;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                    color: #fff;
+                    white-space: nowrap;
+                    text-align: right;
+                    direction: rtl;
+                }
+                .dropdown-item:hover {
+                    background: #3a3a3c;
+                }
+                .dropdown-item.active {
+                    background: #48484a;
+                    font-weight: bold;
+                }
+                .dropdown-backdrop {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    z-index: 999;
+                }
+                /* Reuse dots from global CSS */
+            `}</style>
         </div>
     );
 };

@@ -3,18 +3,16 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './HeaderNav.css';
 
-// 1. הגדרנו את האייקון כאן, כי הוא שייך ל-HeaderNav
 const OptionsIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px">
     <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
   </svg>
 );
 
-
 interface HeaderNavProps {
   title: string;
   onOptionsMenuClick?: () => void;
-  onBack?: () => void; // Optional onBack handler
+  onBack?: () => void;
 }
 
 const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick, onBack }) => {
@@ -33,7 +31,11 @@ const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick, onBack
       <span className="back-button" onClick={handleBack}>
         &larr; חזור
       </span>
-      <h2 className="header-title">{title}</h2>
+
+      <div className="header-title-container">
+        <img src="/ordo-logo.png" alt="Ordo" className="header-logo" />
+        <h2 className="header-title">{title}</h2>
+      </div>
 
       <div className="header-left-actions" style={{ position: 'absolute', left: '16px', display: 'flex', gap: '8px', alignItems: 'center', zIndex: 10 }}>
         {onOptionsMenuClick && (
