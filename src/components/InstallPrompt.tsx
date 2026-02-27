@@ -45,8 +45,8 @@ const InstallPrompt: React.FC = () => {
                 setDeferredPrompt(null);
             }
         } else {
-            // Fallback for browsers that don't support beforeinstallprompt or if it's not yet triggered
-            alert('כדי להתקין את האפליקציה, חפש "התקן אפליקציה" או "הוסף למסך הבית" בתפריט הדפדפן.');
+            // Fallback for Android if beforeinstallprompt hasn't fired yet
+            setShowInstructions(true);
         }
     };
 
@@ -60,21 +60,37 @@ const InstallPrompt: React.FC = () => {
                 className="install-trigger-link"
                 style={linkButtonStyle}
             >
-                התקן את Ordo במסך הבית
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16px" height="16px">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                </svg>
+                התקן את האפליקציה במסך הבית
             </button>
 
             {showInstructions && (
                 <div style={modalStyle} onClick={() => setShowInstructions(false)}>
                     <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-                        <h3 style={{ marginTop: 0, fontSize: '18px' }}>התקנה ב-iPhone</h3>
-                        <p style={{ fontSize: '15px', color: '#ccc', lineHeight: '1.5' }}>
-                            1. לחץ על כפתור <strong>השיתוף</strong> (Share) <br />
-                            <span style={{ fontSize: '12px' }}>(הריבוע עם החץ למעלה בתחתית המסך)</span>
-                        </p>
-                        <p style={{ fontSize: '15px', color: '#ccc', lineHeight: '1.5' }}>
-                            2. גלול מטה ובחר <br />
-                            <strong>"הוסף למסך הבית"</strong> (Add to Home Screen)
-                        </p>
+                        <h3 style={{ marginTop: 0, fontSize: '18px', color: 'var(--text-primary)' }}>
+                            {isIOS ? 'התקנה ב-iPhone' : 'התקנה באנדרואיד'}
+                        </h3>
+                        {isIOS ? (
+                            <>
+                                <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                    1. לחץ על כפתור <strong>השיתוף</strong> (Share) בתחתית המסך.
+                                </p>
+                                <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                    2. גלול מטה ובחר <strong>"הוסף למסך הבית"</strong> (Add to Home Screen).
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                    1. לחץ על ה<strong>תפריט (3 נקודות)</strong> בפינת הדפדפן.
+                                </p>
+                                <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                    2. בחר <strong>"התקן אפליקציה"</strong> או <strong>"הוסף למסך הבית"</strong>.
+                                </p>
+                            </>
+                        )}
                         <button
                             onClick={() => setShowInstructions(false)}
                             style={closeButtonStyle}
@@ -87,11 +103,18 @@ const InstallPrompt: React.FC = () => {
 
             <style>{`
                 .install-trigger-link {
-                    opacity: 0.4;
-                    transition: opacity 0.3s ease;
+                    opacity: 0.8;
+                    font-weight: 600;
+                    letter-spacing: 0.3px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    border-radius: 12px;
+                    transition: all 0.3s ease;
                 }
                 .install-trigger-link:hover {
-                    opacity: 0.8;
+                    opacity: 1;
+                    background: rgba(255, 255, 255, 0.1);
+                    transform: translateY(-1px);
                 }
             `}</style>
         </div>
@@ -110,11 +133,13 @@ const linkButtonStyle: React.CSSProperties = {
     background: 'none',
     border: 'none',
     color: 'var(--text-secondary)',
-    fontSize: '13px',
-    textDecoration: 'underline',
+    fontSize: '14px',
     cursor: 'pointer',
-    padding: '10px',
-    fontFamily: 'inherit'
+    padding: '12px 20px',
+    fontFamily: 'inherit',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
 };
 
 const modalStyle: React.CSSProperties = {

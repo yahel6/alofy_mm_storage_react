@@ -34,12 +34,13 @@ export default defineConfig({
           {
             "src": "/ordo-logo.png",
             "type": "image/png",
-            "sizes": "192x192"
+            "sizes": "192x192 512x512"
           },
           {
-            "src": "/ordo-logo.png",
+            "src": "/ordo-android-icon.png",
             "type": "image/png",
-            "sizes": "512x512"
+            "sizes": "512x512",
+            "purpose": "any maskable"
           }
         ]
       }
