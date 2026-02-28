@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,3 +20,14 @@ const app = initializeApp(firebaseConfig);
 // ייצוא השירותים כדי שנוכל להשתמש בהם בכל האפליקציה
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// הפעלת מטמון אופליין (IndexedDB) - שומר את הנתונים לצפייה ללא אינטרנט
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    // כמה טאבים פתוחים - persistence עובד רק בטאב אחד בו זמנית
+    console.warn('Firestore persistence unavailable: multiple tabs open.');
+  } else if (err.code === 'unimplemented') {
+    // הדפדפן לא תומך ב-IndexedDB
+    console.warn('Firestore persistence not supported by this browser.');
+  }
+});

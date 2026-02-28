@@ -1,6 +1,7 @@
 // src/components/StatusModal.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useOffline } from '../contexts/OfflineContext';
 import type { EquipmentItem } from '../types';
 import { updateEquipmentStatus, deleteEquipmentItem, updateGroupStatusByQuantity, bulkValidateItems } from '../firebaseUtils';
 import QuantityModal from './QuantityModal';
@@ -22,6 +23,7 @@ interface StatusModalProps {
 
 const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose }) => {
   const navigate = useNavigate();
+  const { isOffline } = useOffline();
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<EquipmentItem['status'] | null>(null);
 
@@ -79,39 +81,37 @@ const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose }) => {
             </div>
           )}
 
-          <div className="modal-options">
-            {statusOptions.map(opt => (
-              <div key={opt.id} onClick={() => handleStatusChange(opt.id)}>
-                <span className={`status-dot ${opt.dotClass}`}></span> {opt.label}
+          {isOffline ? (
+            <div style={{ color: 'var(--text-secondary)', fontSize: '14px', textAlign: 'center', padding: '16px 0', lineHeight: 1.6 }}>
+              <div style={{ fontSize: '28px', marginBottom: '8px' }}>📵</div>
+              <div style={{ fontWeight: 700, marginBottom: '4px' }}>מצב אופליין</div>
+              <div>לא ניתן לבצע שינויים ללא חיבור לאינטרנט</div>
+            </div>
+          ) : (
+            <>
+              <div className="modal-options">
+                {statusOptions.map(opt => (
+                  <div key={opt.id} onClick={() => handleStatusChange(opt.id)}>
+                    <span className={`status-dot ${opt.dotClass}`}></span> {opt.label}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <button
-            className="modal-button btn-validate"
-            onClick={handleValidate}
-          >
-            בצע ווידוא
-          </button>
+              <button className="modal-button btn-validate" onClick={handleValidate}>
+                בצע ווידוא
+              </button>
 
-          <button
-            className="modal-button btn-danger"
-            onClick={handleDelete}
-          >
-            מחק פריט מסוים
-          </button>
+              <button className="modal-button btn-danger" onClick={handleDelete}>
+                מחק פריט מסוים
+              </button>
 
-          <button
-            className="modal-button btn-edit-details"
-            onClick={handleEdit}
-          >
-            ערוך פרטים
-          </button>
+              <button className="modal-button btn-edit-details" onClick={handleEdit}>
+                ערוך פרטים
+              </button>
+            </>
+          )}
 
-          <button
-            className="modal-button btn-cancel"
-            onClick={onClose}
-          >
+          <button className="modal-button btn-cancel" onClick={onClose}>
             ביטול
           </button>
         </div>

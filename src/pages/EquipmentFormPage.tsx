@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { addNewEquipment, updateEquipmentItem, calculateDerivedStatus } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css'; // ייבוא עיצוב הטופס
@@ -15,6 +16,14 @@ function EquipmentFormPage() {
   const navigate = useNavigate();
   const { equipment, users, warehouses, isLoading, currentUser } = useDatabase();
   const [searchParams] = useSearchParams();
+  const { isOffline } = useOffline();
+
+  // אם אופליין - הפנה חזרה
+  useEffect(() => {
+    if (isOffline) {
+      navigate(-1);
+    }
+  }, [isOffline, navigate]);
 
   const isEditMode = !!itemId;
 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { createGroupDetailed } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css';
@@ -8,6 +9,8 @@ import '../components/Form.css';
 const GroupFormPage: React.FC = () => {
     const navigate = useNavigate();
     const { users, allWarehouses, allActivities, currentUser, isLoading } = useDatabase();
+    const { isOffline } = useOffline();
+    useEffect(() => { if (isOffline) navigate(-1); }, [isOffline, navigate]);
 
     const [name, setName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);

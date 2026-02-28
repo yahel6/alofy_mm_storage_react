@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute.tsx';
 import { DatabaseProvider } from './contexts/DatabaseContext.tsx';
 import { ValidationProvider } from './contexts/ValidationContext.tsx';
 import { SelectionProvider } from './contexts/SelectionContext.tsx';
+import { OfflineProvider } from './contexts/OfflineContext.tsx';
 
 // ... (rest of imports)
 
@@ -146,6 +147,8 @@ const router = createBrowserRouter([
 // רינדור האפליקציה
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <OfflineProvider>
+      <RouterProvider router={router} />
+    </OfflineProvider>
   </React.StrictMode>,
 )

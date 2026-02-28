@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { useValidation } from '../contexts/ValidationContext';
 import { useSelection } from '../contexts/SelectionContext';
 import HeaderNav from '../components/HeaderNav';
@@ -33,6 +34,7 @@ function ActivityDetailsPage() {
 
   const navigate = useNavigate();
   const { activities, equipment, isLoading } = useDatabase();
+  const { isOffline } = useOffline();
   const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
   const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection: globalToggleItemSelection, clearSelection } = useSelection();
 
@@ -539,21 +541,26 @@ function ActivityDetailsPage() {
               {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
             </button>
 
-            <button
-              onClick={toggleSelectionMode}
-              style={{
-                border: isSelectionMode ? '2px solid var(--action-color)' : undefined,
-                background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
-                color: isSelectionMode ? 'var(--action-color)' : undefined,
-              }}
-            >
-              {isSelectionMode ? 'בטל' : 'בחר'}
-            </button>
+            {/* Selection mode and validation - hidden offline */}
+            {!isOffline && (
+              <>
+                <button
+                  onClick={toggleSelectionMode}
+                  style={{
+                    border: isSelectionMode ? '2px solid var(--action-color)' : undefined,
+                    background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
+                    color: isSelectionMode ? 'var(--action-color)' : undefined,
+                  }}
+                >
+                  {isSelectionMode ? 'בטל' : 'בחר'}
+                </button>
 
-            {!isValidationMode && (
-              <button onClick={() => startSession(scopeId)}>
-                ווידוא
-              </button>
+                {!isValidationMode && (
+                  <button onClick={() => startSession(scopeId)}>
+                    ווידוא
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -565,11 +572,14 @@ function ActivityDetailsPage() {
         {/* ... (card title) ... */}
         <h3 className="card-title">
           <span>{`סטטוס פעילות (${totalAssigned} / ${totalItems})`}</span>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className="card-title-action" onClick={handleEditEquipment}>
-              ערוך
-            </span>
-          </div>
+          {/* Edit button only when online */}
+          {!isOffline && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span className="card-title-action" onClick={handleEditEquipment}>
+                ערוך
+              </span>
+            </div>
+          )}
         </h3>
         <div className="equipment-scroll-pane">
           {(finalMissingItems.length === 0 && finalAssignedItems.length === 0 && isValidationMode) && (
@@ -679,14 +689,11 @@ function ActivityDetailsPage() {
           title={`פיצול פריט: ${splitCandidateGroup[0].name}`}
         />
       )}
-      {!isValidationMode && (
+      {/* Checkout/Checkin buttons - hidden offline */}
+      {!isValidationMode && !isOffline && (
         <div className="action-buttons">
           {isActivityCheckedOut ? (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleCheckin}
-            >
+            <button type="button" className="btn btn-secondary" onClick={handleCheckin}>
               בצע Check-in חזרה למחסן
             </button>
           ) : (
@@ -695,10 +702,7 @@ function ActivityDetailsPage() {
               className="btn btn-primary"
               onClick={handleCheckout}
               disabled={finalAssignedItems.length === 0 || finalMissingItems.length > 0}
-              style={{
-                marginTop: '12px',
-                opacity: (finalAssignedItems.length === 0 || finalMissingItems.length > 0) ? 0.5 : 1
-              }}
+              style={{ marginTop: '12px', opacity: (finalAssignedItems.length === 0 || finalMissingItems.length > 0) ? 0.5 : 1 }}
             >
               בצע Check-out לציוד
             </button>

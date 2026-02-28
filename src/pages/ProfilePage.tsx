@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { updateUserProfile, requestToJoinGroup } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css';
@@ -8,6 +9,7 @@ import '../components/Form.css';
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { currentUser, users, groups } = useDatabase();
+    const { isOffline } = useOffline();
     // We get the full user object from the database context to ensure we have the latest display name
     const [displayName, setDisplayName] = useState('');
     const [dominantGroupId, setDominantGroupId] = useState('');
@@ -129,9 +131,15 @@ const ProfilePage: React.FC = () => {
                     )}
 
                     <div className="save-bar" style={{ marginBottom: '32px' }}>
-                        <button type="submit" className="btn-submit" disabled={loading}>
-                            {loading ? 'שומר...' : 'שמור שינויים'}
-                        </button>
+                        {isOffline ? (
+                            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                                ⚠️ לא ניתן לשמור שינויים במצב אופליין
+                            </div>
+                        ) : (
+                            <button type="submit" className="btn-submit" disabled={loading}>
+                                {loading ? 'שומר...' : 'שמור שינויים'}
+                            </button>
+                        )}
                     </div>
                 </form>
 
@@ -139,20 +147,22 @@ const ProfilePage: React.FC = () => {
                 <div style={{ maxWidth: '500px', margin: '0 auto', borderTop: '1px solid #333', paddingTop: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h3 style={{ margin: 0 }}>הקבוצות שלי</h3>
-                        <button
-                            onClick={() => navigate('/groups/new')}
-                            style={{
-                                background: 'none',
-                                border: '1px solid var(--action-color)',
-                                color: 'var(--action-color)',
-                                padding: '4px 12px',
-                                borderRadius: '6px',
-                                fontSize: '0.9em',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            צור קבוצה חדשה
-                        </button>
+                        {!isOffline && (
+                            <button
+                                onClick={() => navigate('/groups/new')}
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid var(--action-color)',
+                                    color: 'var(--action-color)',
+                                    padding: '4px 12px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.9em',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                צור קבוצה חדשה
+                            </button>
+                        )}
                     </div>
 
                     {/* קבוצות שהמשתמש חבר בהן */}
@@ -229,19 +239,19 @@ const ProfilePage: React.FC = () => {
                                     }}>
                                         <span>{group.name}</span>
                                         <button
-                                            onClick={() => currentUser && requestToJoinGroup(group.id, currentUser.uid)}
-                                            disabled={isPending}
+                                            onClick={() => currentUser && !isOffline && requestToJoinGroup(group.id, currentUser.uid)}
+                                            disabled={isPending || isOffline}
                                             style={{
                                                 padding: '6px 12px',
                                                 borderRadius: '6px',
                                                 border: 'none',
-                                                background: isPending ? '#444' : 'var(--action-color)',
-                                                color: isPending ? '#888' : 'white',
-                                                cursor: isPending ? 'default' : 'pointer',
+                                                background: (isPending || isOffline) ? '#444' : 'var(--action-color)',
+                                                color: (isPending || isOffline) ? '#888' : 'white',
+                                                cursor: (isPending || isOffline) ? 'default' : 'pointer',
                                                 fontSize: '0.9em'
                                             }}
                                         >
-                                            {isPending ? 'נשלחה בקשה' : 'בקש להצטרף'}
+                                            {isPending ? 'נשלחה בקשה' : isOffline ? 'אופליין' : 'בקש להצטרף'}
                                         </button>
                                     </div>
                                 );

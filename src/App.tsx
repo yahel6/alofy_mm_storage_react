@@ -4,6 +4,8 @@ import { Outlet, useLocation, matchPath } from "react-router-dom";
 import BottomNav from './components/BottomNav.tsx';
 import Fab from './components/Fab.tsx';
 import QuickAddModal from './components/QuickAddModal.tsx';
+import OfflineBanner from './components/OfflineBanner.tsx';
+import { useOffline } from './contexts/OfflineContext.tsx';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 
 import './App.css';
@@ -38,6 +40,7 @@ const pageAnimation: Variants = {
 function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const location = useLocation();
+  const { isOffline } = useOffline();
 
   // Detect if we are in a warehouse details page to pass context to the modal
   const warehouseMatch = matchPath({ path: "/warehouses/:warehouseId" }, location.pathname);
@@ -45,6 +48,9 @@ function App() {
 
   return (
     <div className="app-container">
+      {/* Offline banner - shows at top of every page when offline */}
+      <OfflineBanner />
+
       <main className="main-layout-wrapper">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -72,12 +78,17 @@ function App() {
 
       <BottomNav />
 
-      <Fab onClick={() => setIsAddModalOpen(true)} />
-      <QuickAddModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        warehouseId={currentWarehouseId}
-      />
+      {/* FAB is hidden when offline - no editing allowed */}
+      {!isOffline && (
+        <>
+          <Fab onClick={() => setIsAddModalOpen(true)} />
+          <QuickAddModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            warehouseId={currentWarehouseId}
+          />
+        </>
+      )}
     </div>
   );
 }

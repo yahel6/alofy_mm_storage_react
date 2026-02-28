@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { useSelection } from '../contexts/SelectionContext';
 import HeaderNav from '../components/HeaderNav';
 import EquipmentItemRow from '../components/EquipmentItemRow';
@@ -30,6 +31,7 @@ function FilteredEquipmentPage() {
   const { filterType } = useParams<{ filterType: string }>();
   const scopeId = `filter-${filterType || 'all'}`;
   const { equipment, isLoading, currentUser } = useDatabase();
+  const { isOffline } = useOffline();
   const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection, clearSelection } = useSelection();
 
   const isSelectionMode = isSelectionModeActive(scopeId);
@@ -115,7 +117,8 @@ function FilteredEquipmentPage() {
         )}
       </div>
 
-      {isSelectionMode && !bulkAction && (
+      {/* סלקשן בחירה - נסתר באופליין */}
+      {isSelectionMode && !bulkAction && !isOffline && (
         <div className="bulk-actions-toolbar" style={{
           position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
           background: '#222', padding: '12px', borderRadius: '16px',

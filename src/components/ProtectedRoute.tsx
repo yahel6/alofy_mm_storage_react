@@ -30,8 +30,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       setUser(user);
       // קרא את הסטטוס
       const snap = await getDoc(doc(db, 'users', user.uid));
-      if (!snap.exists()) {
-        // גיבוי: צור כ-pending (נדיר אם ensureUserDoc רץ)
+      if (!snap.exists() && navigator.onLine) {
+        // Guard: only create the pending record when online.
+        // If offline, IndexedDB cache may already have it; if not, it will be
+        // created the next time the app loads with a network connection.
+        // Creating it while offline would queue a write that fires on reconnect
+        // and could overwrite an already-approved role with 'pending'.
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid, email: user.email ?? null, displayName: user.displayName ?? '',
           role: 'pending', approved: false

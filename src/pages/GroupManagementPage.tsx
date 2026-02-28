@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import {
     approveJoinRequest,
     rejectJoinRequest,
@@ -21,6 +22,7 @@ const GroupManagementPage: React.FC = () => {
     const [searchTerms, setSearchTerms] = React.useState<{ [groupId: string]: string }>({});
     const [confirmRemove, setConfirmRemove] = React.useState<{ groupId: string, memberId: string, memberName: string } | null>(null);
     const { groups, users, warehouses, allWarehouses, activities, allActivities, currentUser, isLoading } = useDatabase();
+    const { isOffline } = useOffline();
 
     if (isLoading || !currentUser) return <div className="loading-screen">טוען...</div>;
 
@@ -55,25 +57,27 @@ const GroupManagementPage: React.FC = () => {
 
             <div className="container page-content" style={{ paddingBottom: '100px' }}>
 
-                {/* כפתור ליצירת קבוצה חדשה */}
-                <div style={{ marginBottom: '32px' }}>
-                    <button
-                        onClick={() => navigate('/groups/new')}
-                        className="btn-submit"
-                        style={{
-                            width: '100%',
-                            padding: '16px',
-                            fontSize: '1.1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '10px'
-                        }}
-                    >
-                        <span>➕</span>
-                        צור קבוצה חדשה
-                    </button>
-                </div>
+                {/* כפתור ליצירת קבוצה חדשה - נסתר באופליין */}
+                {!isOffline && (
+                    <div style={{ marginBottom: '32px' }}>
+                        <button
+                            onClick={() => navigate('/groups/new')}
+                            className="btn-submit"
+                            style={{
+                                width: '100%',
+                                padding: '16px',
+                                fontSize: '1.1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px'
+                            }}
+                        >
+                            <span>➕</span>
+                            צור קבוצה חדשה
+                        </button>
+                    </div>
+                )}
 
                 <h2 className="section-title" style={{ marginBottom: '20px' }}>הקבוצות שלי</h2>
 
@@ -132,7 +136,7 @@ const GroupManagementPage: React.FC = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        {isOwner && (
+                                        {isOwner && !isOffline && (
                                             <button
                                                 onClick={() => handleDeleteGroup(group.id)}
                                                 style={{
@@ -188,8 +192,8 @@ const GroupManagementPage: React.FC = () => {
                                                                 </div>
 
                                                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginLeft: '4px' }}>
-                                                                    {/* כפתורי קידום/הורדה (רק לבעלים) */}
-                                                                    {isOwner && !isMemberOwner && (
+                                                                    {/* כפתורי קידום/הורדה (רק לבעלים, רק אונליין) */}
+                                                                    {isOwner && !isMemberOwner && !isOffline && (
                                                                         <div style={{ display: 'flex', gap: '8px' }}>
                                                                             {!isMemberAdmin ? (
                                                                                 <button
@@ -211,8 +215,8 @@ const GroupManagementPage: React.FC = () => {
                                                                         </div>
                                                                     )}
 
-                                                                    {/* כפתור הסרה (בעלים יכול להסיר כולם, מנהל יכול להסיר רק חברים רגילים) */}
-                                                                    {((isOwner && !isMemberOwner) || (isAdmin && !isMemberOwner && !isMemberAdmin)) && (
+                                                                    {/* כפתור הסרה (רק אונליין) */}
+                                                                    {!isOffline && ((isOwner && !isMemberOwner) || (isAdmin && !isMemberOwner && !isMemberAdmin)) && (
                                                                         <button
                                                                             onClick={() => setConfirmRemove({ groupId: group.id, memberId: mid, memberName: member?.displayName || 'משתמש' })}
                                                                             style={{
@@ -238,112 +242,110 @@ const GroupManagementPage: React.FC = () => {
                                                     })}
                                                 </div>
 
-                                                {/* הוספת חברים חדשים */}
-                                                <div style={{ marginTop: '16px' }}>
-                                                    <h5 style={{ fontSize: '0.85rem', marginBottom: '8px', color: 'var(--text-secondary)' }}>הוספת חברים חדשים</h5>
+                                                {/* הוספת חברים חדשים - נסתר באופליין */}
+                                                {!isOffline && (
+                                                    <div style={{ marginTop: '16px' }}>
+                                                        <h5 style={{ fontSize: '0.85rem', marginBottom: '8px', color: 'var(--text-secondary)' }}>הוספת חברים חדשים</h5>
 
-                                                    {/* שדה חיפוש */}
-                                                    <div style={{ marginBottom: '10px' }}>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="חפש לפי שם או אימייל..."
-                                                            value={searchTerms[group.id] || ''}
-                                                            onChange={(e) => setSearchTerms(prev => ({ ...prev, [group.id]: e.target.value }))}
-                                                            style={{
-                                                                width: '100%',
-                                                                padding: '8px 12px',
-                                                                background: '#111',
-                                                                border: '1px solid #444',
-                                                                borderRadius: '8px',
-                                                                color: 'white',
-                                                                fontSize: '0.85rem'
-                                                            }}
-                                                        />
+                                                        {/* שדה חיפוש */}
+                                                        <div style={{ marginBottom: '10px' }}>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="חפש לפי שם או אימייל..."
+                                                                value={searchTerms[group.id] || ''}
+                                                                onChange={(e) => setSearchTerms(prev => ({ ...prev, [group.id]: e.target.value }))}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '8px 12px',
+                                                                    background: '#111',
+                                                                    border: '1px solid #444',
+                                                                    borderRadius: '8px',
+                                                                    color: 'white',
+                                                                    fontSize: '0.85rem'
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        <div style={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                                                            gap: '8px',
+                                                            maxHeight: '150px',
+                                                            overflowY: 'auto',
+                                                            padding: '10px',
+                                                            background: '#1a1a1a',
+                                                            borderRadius: '12px',
+                                                            border: '1px solid #333',
+                                                            marginBottom: '12px'
+                                                        }}>
+                                                            {users
+                                                                .filter(u => {
+                                                                    if (group.members.includes(u.uid)) return false;
+                                                                    const term = (searchTerms[group.id] || '').toLowerCase();
+                                                                    if (!term) return true;
+                                                                    return (u.displayName || '').toLowerCase().includes(term) ||
+                                                                        (u.email || '').toLowerCase().includes(term);
+                                                                })
+                                                                .map(u => {
+                                                                    const isSelected = (selectedUsers[group.id] || []).includes(u.uid);
+                                                                    return (
+                                                                        <div
+                                                                            key={u.uid}
+                                                                            onClick={() => {
+                                                                                setSelectedUsers(prev => {
+                                                                                    const current = prev[group.id] || [];
+                                                                                    const next = isSelected ? current.filter(id => id !== u.uid) : [...current, u.uid];
+                                                                                    return { ...prev, [group.id]: next };
+                                                                                });
+                                                                            }}
+                                                                            style={{
+                                                                                padding: '6px 8px',
+                                                                                background: isSelected ? 'var(--action-color)' : '#2a2a2a',
+                                                                                color: isSelected ? 'white' : 'var(--text-primary)',
+                                                                                borderRadius: '8px',
+                                                                                fontSize: '0.8rem',
+                                                                                cursor: 'pointer',
+                                                                                textAlign: 'center',
+                                                                                transition: 'all 0.2s',
+                                                                                border: isSelected ? '1px solid var(--action-color)' : '1px solid #444'
+                                                                            }}
+                                                                        >
+                                                                            {u.displayName || u.email}
+                                                                        </div>
+                                                                    );
+                                                                })
+                                                            }
+                                                        </div>
+
+                                                        {(selectedUsers[group.id] || []).length > 0 && (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    const success = await addMembersToGroup(group.id, selectedUsers[group.id]);
+                                                                    if (success) {
+                                                                        setSelectedUsers(prev => ({ ...prev, [group.id]: [] }));
+                                                                    }
+                                                                }}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '10px',
+                                                                    background: 'var(--action-color)',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    borderRadius: '8px',
+                                                                    fontSize: '0.9rem',
+                                                                    fontWeight: 'bold',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                צרף {(selectedUsers[group.id] || []).length} חברים נבחרים
+                                                            </button>
+                                                        )}
                                                     </div>
-
-                                                    <div style={{
-                                                        display: 'grid',
-                                                        gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
-                                                        gap: '8px',
-                                                        maxHeight: '150px',
-                                                        overflowY: 'auto',
-                                                        padding: '10px',
-                                                        background: '#1a1a1a',
-                                                        borderRadius: '12px',
-                                                        border: '1px solid #333',
-                                                        marginBottom: '12px'
-                                                    }}>
-                                                        {users
-                                                            .filter(u => {
-                                                                // לא בקבוצה
-                                                                if (group.members.includes(u.uid)) return false;
-
-                                                                // סינון לפי חיפוש
-                                                                const term = (searchTerms[group.id] || '').toLowerCase();
-                                                                if (!term) return true;
-
-                                                                return (u.displayName || '').toLowerCase().includes(term) ||
-                                                                    (u.email || '').toLowerCase().includes(term);
-                                                            })
-                                                            .map(u => {
-                                                                const isSelected = (selectedUsers[group.id] || []).includes(u.uid);
-                                                                return (
-                                                                    <div
-                                                                        key={u.uid}
-                                                                        onClick={() => {
-                                                                            setSelectedUsers(prev => {
-                                                                                const current = prev[group.id] || [];
-                                                                                const next = isSelected ? current.filter(id => id !== u.uid) : [...current, u.uid];
-                                                                                return { ...prev, [group.id]: next };
-                                                                            });
-                                                                        }}
-                                                                        style={{
-                                                                            padding: '6px 8px',
-                                                                            background: isSelected ? 'var(--action-color)' : '#2a2a2a',
-                                                                            color: isSelected ? 'white' : 'var(--text-primary)',
-                                                                            borderRadius: '8px',
-                                                                            fontSize: '0.8rem',
-                                                                            cursor: 'pointer',
-                                                                            textAlign: 'center',
-                                                                            transition: 'all 0.2s',
-                                                                            border: isSelected ? '1px solid var(--action-color)' : '1px solid #444'
-                                                                        }}
-                                                                    >
-                                                                        {u.displayName || u.email}
-                                                                    </div>
-                                                                );
-                                                            })
-                                                        }
-                                                    </div>
-
-                                                    {(selectedUsers[group.id] || []).length > 0 && (
-                                                        <button
-                                                            onClick={async () => {
-                                                                const success = await addMembersToGroup(group.id, selectedUsers[group.id]);
-                                                                if (success) {
-                                                                    setSelectedUsers(prev => ({ ...prev, [group.id]: [] }));
-                                                                }
-                                                            }}
-                                                            style={{
-                                                                width: '100%',
-                                                                padding: '10px',
-                                                                background: 'var(--action-color)',
-                                                                color: 'white',
-                                                                border: 'none',
-                                                                borderRadius: '8px',
-                                                                fontSize: '0.9rem',
-                                                                fontWeight: 'bold',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            צרף {(selectedUsers[group.id] || []).length} חברים נבחרים
-                                                        </button>
-                                                    )}
-                                                </div>
+                                                )}
                                             </div>
 
-                                            {/* בקשות ממתינות */}
-                                            {group.pendingRequests && group.pendingRequests.length > 0 && (
+                                            {/* בקשות ממתינות - נסתרות באופליין */}
+                                            {!isOffline && group.pendingRequests && group.pendingRequests.length > 0 && (
                                                 <div className="sub-section" style={{
                                                     background: 'rgba(var(--action-color-rgb), 0.05)',
                                                     padding: '16px',
@@ -383,22 +385,24 @@ const GroupManagementPage: React.FC = () => {
                                     {/* שיוך מחסנים ופעילויות */}
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
 
-                                        {/* ניהול מחסנים */}
+                                        {/* ניהול מחסנים - select נסתר באופליין */}
                                         <div className="link-section">
                                             <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>מחסנים מקושרים</h4>
-                                            <select
-                                                className="form-input"
-                                                style={{ marginBottom: '12px', background: '#222', borderColor: '#444', color: 'var(--text-secondary)' }}
-                                                onChange={(e) => {
-                                                    if (e.target.value) associateEntityWithGroup('warehouses', e.target.value, group.id);
-                                                }}
-                                                value=""
-                                            >
-                                                <option value="">הוסף מחסן לקבוצה...</option>
-                                                {allWarehouses.filter(w => w.groupId !== group.id).map(w => (
-                                                    <option key={w.id} value={w.id}>{w.name} {w.groupId ? '(משויך לאחר)' : ''}</option>
-                                                ))}
-                                            </select>
+                                            {!isOffline && (
+                                                <select
+                                                    className="form-input"
+                                                    style={{ marginBottom: '12px', background: '#222', borderColor: '#444', color: 'var(--text-secondary)' }}
+                                                    onChange={(e) => {
+                                                        if (e.target.value) associateEntityWithGroup('warehouses', e.target.value, group.id);
+                                                    }}
+                                                    value=""
+                                                >
+                                                    <option value="">הוסף מחסן לקבוצה...</option>
+                                                    {allWarehouses.filter(w => w.groupId !== group.id).map(w => (
+                                                        <option key={w.id} value={w.id}>{w.name} {w.groupId ? '(משויך לאחר)' : ''}</option>
+                                                    ))}
+                                                </select>
+                                            )}
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                                 {warehouses.filter(w => w.groupId === group.id).map(w => (
                                                     <div key={w.id} style={{
@@ -412,33 +416,37 @@ const GroupManagementPage: React.FC = () => {
                                                         gap: '8px'
                                                     }}>
                                                         <span>{w.name}</span>
-                                                        <button
-                                                            onClick={() => associateEntityWithGroup('warehouses', w.id, null)}
-                                                            style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '0', fontSize: '1.1rem' }}
-                                                        >
-                                                            ×
-                                                        </button>
+                                                        {!isOffline && (
+                                                            <button
+                                                                onClick={() => associateEntityWithGroup('warehouses', w.id, null)}
+                                                                style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '0', fontSize: '1.1rem' }}
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
-                                        {/* ניהול פעילויות */}
+                                        {/* ניהול פעילויות - select נסתר באופליין */}
                                         <div className="link-section">
                                             <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>פעילויות מקושרות</h4>
-                                            <select
-                                                className="form-input"
-                                                style={{ marginBottom: '12px', background: '#222', borderColor: '#444', color: 'var(--text-secondary)' }}
-                                                onChange={(e) => {
-                                                    if (e.target.value) associateEntityWithGroup('activities', e.target.value, group.id);
-                                                }}
-                                                value=""
-                                            >
-                                                <option value="">הוסף פעילות לקבוצה...</option>
-                                                {allActivities.filter(a => a.groupId !== group.id).map(a => (
-                                                    <option key={a.id} value={a.id}>{a.name} {a.groupId ? '(משויך לאחר)' : ''}</option>
-                                                ))}
-                                            </select>
+                                            {!isOffline && (
+                                                <select
+                                                    className="form-input"
+                                                    style={{ marginBottom: '12px', background: '#222', borderColor: '#444', color: 'var(--text-secondary)' }}
+                                                    onChange={(e) => {
+                                                        if (e.target.value) associateEntityWithGroup('activities', e.target.value, group.id);
+                                                    }}
+                                                    value=""
+                                                >
+                                                    <option value="">הוסף פעילות לקבוצה...</option>
+                                                    {allActivities.filter(a => a.groupId !== group.id).map(a => (
+                                                        <option key={a.id} value={a.id}>{a.name} {a.groupId ? '(משויך לאחר)' : ''}</option>
+                                                    ))}
+                                                </select>
+                                            )}
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                                 {activities.filter(a => a.groupId === group.id).map(a => (
                                                     <div key={a.id} style={{
@@ -452,12 +460,14 @@ const GroupManagementPage: React.FC = () => {
                                                         gap: '8px'
                                                     }}>
                                                         <span>{a.name}</span>
-                                                        <button
-                                                            onClick={() => associateEntityWithGroup('activities', a.id, null)}
-                                                            style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '0', fontSize: '1.1rem' }}
-                                                        >
-                                                            ×
-                                                        </button>
+                                                        {!isOffline && (
+                                                            <button
+                                                                onClick={() => associateEntityWithGroup('activities', a.id, null)}
+                                                                style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '0', fontSize: '1.1rem' }}
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>

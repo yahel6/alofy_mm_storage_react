@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { addNewActivity, updateActivity } from '../firebaseUtils'; //
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css'; // שימוש חוזר בעיצוב הטופס
@@ -15,6 +16,9 @@ function ActivityFormPage() {
   const { activityId } = useParams<{ activityId: string }>();
   const navigate = useNavigate();
   const { activities, users, isLoading, groups, currentUser } = useDatabase();
+  const { isOffline } = useOffline();
+
+  useEffect(() => { if (isOffline) navigate(-1); }, [isOffline, navigate]);
 
   const isEditMode = !!activityId;
 

@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { updateActivityEquipment, splitItem } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import EquipmentSelectItem from '../components/EquipmentSelectItem';
@@ -13,6 +14,8 @@ function EditActivityEquipmentPage() {
   const { activityId } = useParams<{ activityId: string }>();
   const navigate = useNavigate();
   const { activities, equipment: allEquipment, warehouses, isLoading } = useDatabase();
+  const { isOffline } = useOffline();
+  useEffect(() => { if (isOffline) navigate(-1); }, [isOffline, navigate]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

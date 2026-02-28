@@ -4,6 +4,7 @@ import { db } from '../firebaseConfig';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, getDocs } from 'firebase/firestore';
 import HeaderNav from '../components/HeaderNav';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import '../components/Form.css';
 import type { Unsubscribe } from 'firebase/auth';
 
@@ -19,6 +20,7 @@ type Row = {
 
 export default function AdminUsersPage() {
   const { currentUser } = useDatabase();
+  const { isOffline } = useOffline();
   const [pending, setPending] = useState<Row[]>([]);
   const [all, setAll] = useState<Row[]>([]);
   const [tab, setTab] = useState<'pending' | 'all'>('pending');
@@ -138,7 +140,9 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      {!u.approved ? (
+                      {isOffline ? (
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '4px 8px', border: '1px solid #555', borderRadius: '6px' }}>📵 אופליין</span>
+                      ) : !u.approved ? (
                         <>
                           <button className="btn-submit" style={{ width: 'auto', padding: '8px 12px' }} onClick={() => approve(u.id)}>
                             אשר (Member)

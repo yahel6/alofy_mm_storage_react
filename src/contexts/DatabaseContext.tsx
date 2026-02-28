@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, useMemo, type ReactNode
 import { collection, onSnapshot, doc, setDoc, type DocumentData } from 'firebase/firestore';
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { db, auth } from '../firebaseConfig';
+import { useOffline } from './OfflineContext';
 import type { AppUser, Warehouse, EquipmentItem, Activity, Group, Competence, CompetenceRecord } from '../types';
 
 // הגדרת מה ה-Context יספק
@@ -51,6 +52,17 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   // isLoading הכללי יהיה true כל עוד *אחד* מהפריטים עדיין בטעינה
   const isLoading = Object.values(loadingStates).some(state => state === true);
 
+  // הפעלת סימון body.app-offline כדי להשבית כפתורי עריכה ב-CSS
+  const { isOffline, updateLastSynced } = useOffline();
+  useEffect(() => {
+    if (isOffline) {
+      document.body.classList.add('app-offline');
+    } else {
+      document.body.classList.remove('app-offline');
+    }
+    return () => document.body.classList.remove('app-offline');
+  }, [isOffline]);
+
   // אפקט הסנכרון - מאזין לשינויים ב-Firestore
   useEffect(() => {
     console.log("DatabaseContext: מתחיל האזנה ל-Firebase...");
@@ -66,36 +78,44 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       const usersData = mapSnapshot<AppUser>(snapshot);
       setUsers(usersData);
       setLoadingStates(prev => ({ ...prev, users: false }));
+      // Update timestamp only when data comes from server (not from local IndexedDB cache)
+      if (!snapshot.metadata.fromCache) updateLastSynced();
     });
 
     const unsubGroups = onSnapshot(collection(db, 'groups'), (snapshot) => {
       setGroups(mapSnapshot<Group>(snapshot));
       setLoadingStates(prev => ({ ...prev, groups: false }));
+      if (!snapshot.metadata.fromCache) updateLastSynced();
     });
 
     const unsubWarehouses = onSnapshot(collection(db, 'warehouses'), (snapshot) => {
       setWarehouses(mapSnapshot<Warehouse>(snapshot));
       setLoadingStates(prev => ({ ...prev, warehouses: false }));
+      if (!snapshot.metadata.fromCache) updateLastSynced();
     });
 
     const unsubEquipment = onSnapshot(collection(db, 'equipment'), (snapshot) => {
       setEquipment(mapSnapshot<EquipmentItem>(snapshot));
       setLoadingStates(prev => ({ ...prev, equipment: false }));
+      if (!snapshot.metadata.fromCache) updateLastSynced();
     });
 
     const unsubActivities = onSnapshot(collection(db, 'activities'), (snapshot) => {
       setActivities(mapSnapshot<Activity>(snapshot));
       setLoadingStates(prev => ({ ...prev, activities: false }));
+      if (!snapshot.metadata.fromCache) updateLastSynced();
     });
 
     const unsubCompetences = onSnapshot(collection(db, 'competences'), (snapshot) => {
       setCompetences(mapSnapshot<Competence>(snapshot));
       setLoadingStates(prev => ({ ...prev, competences: false }));
+      if (!snapshot.metadata.fromCache) updateLastSynced();
     });
 
     const unsubCompetenceRecords = onSnapshot(collection(db, 'competenceRecords'), (snapshot) => {
       setRecords(mapSnapshot<CompetenceRecord>(snapshot));
       setLoadingStates(prev => ({ ...prev, competenceRecords: false }));
+      if (!snapshot.metadata.fromCache) updateLastSynced();
     });
 
     // האזנה לשינויי התחברות (Auth)
@@ -125,7 +145,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
       if (appUser) {
         setCurrentUser(appUser);
-      } else {
+      } else if (navigator.onLine) {
+        // Only create a new user document when online.
+        // Offline: the user record will either come from IndexedDB cache
+        // or will be created the next time they open the app with connectivity.
         console.log("משתמש חדש זוהה! יוצר רשומה ב-Firestore...");
 
         const newUserData: AppUser = {
@@ -139,12 +162,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
         const userRef = doc(db, "users", authUser.uid);
         setDoc(userRef, newUserData)
-          .then(() => {
-            console.log("משתמש חדש נוצר בהצלחה");
-          })
-          .catch(err => {
-            console.error("שגיאה ביצירת משתמש חדש:", err);
-          });
+          .then(() => { console.log("משתמש חדש נוצר בהצלחה"); })
+          .catch(err => { console.error("שגיאה ביצירת משתמש חדש:", err); });
       }
     } else if (!authUser) {
       setCurrentUser(null);

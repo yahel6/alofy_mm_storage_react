@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { useValidation } from '../contexts/ValidationContext';
 import { useSelection } from '../contexts/SelectionContext';
 import HeaderNav from '../components/HeaderNav';
@@ -31,6 +32,7 @@ function WarehouseDetailsPage() {
   const scopeId = warehouseId || 'unknown_warehouse';
 
   const { warehouses, equipment, users, activities, isLoading } = useDatabase();
+  const { isOffline } = useOffline();
   const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
   const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection: globalToggleItemSelection, clearSelection } = useSelection();
 
@@ -475,21 +477,26 @@ function WarehouseDetailsPage() {
               {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
             </button>
 
-            <button
-              onClick={toggleSelectionMode}
-              style={{
-                border: isSelectionMode ? '2px solid var(--action-color)' : undefined,
-                background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
-                color: isSelectionMode ? 'var(--action-color)' : undefined,
-              }}
-            >
-              {isSelectionMode ? 'בטל' : 'בחר'}
-            </button>
+            {/* Selection mode and validation - hidden offline */}
+            {!isOffline && (
+              <>
+                <button
+                  onClick={toggleSelectionMode}
+                  style={{
+                    border: isSelectionMode ? '2px solid var(--action-color)' : undefined,
+                    background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
+                    color: isSelectionMode ? 'var(--action-color)' : undefined,
+                  }}
+                >
+                  {isSelectionMode ? 'בטל' : 'בחר'}
+                </button>
 
-            {!isValidationMode && (
-              <button onClick={() => startSession(scopeId)}>
-                ווידוא
-              </button>
+                {!isValidationMode && (
+                  <button onClick={() => startSession(scopeId)}>
+                    ווידוא
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

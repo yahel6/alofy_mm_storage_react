@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { createCompetence } from '../firebaseCompetences';
 import HeaderNav from '../components/HeaderNav';
 import './CompetencesPage.css';
@@ -8,6 +9,8 @@ import './CompetencesPage.css';
 const AddCompetencePage: React.FC = () => {
     const navigate = useNavigate();
     const { users, groups, currentUser, isLoading } = useDatabase();
+    const { isOffline } = useOffline();
+    useEffect(() => { if (isOffline) navigate('/competences'); }, [isOffline, navigate]);
 
     const userGroups = groups.filter(g => g.members.includes(currentUser?.uid || ''));
 

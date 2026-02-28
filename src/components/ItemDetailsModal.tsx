@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import type { EquipmentStatus } from '../types';
 import {
     updateSubItemStatus,
@@ -38,6 +39,7 @@ const getStatusColor = (statusId: EquipmentStatus) => {
 
 const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) => {
     const { equipment, currentUser } = useDatabase();
+    const { isOffline } = useOffline();
 
     // Auto-update when equipment changes in context
     const item = equipment.find(e => e.id === itemId);
@@ -137,57 +139,65 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) 
                                 </p>
                             ) : (
                                 subItems.map(sub => {
-                                    const currentOpt = statusOptions.find(o => o.id === sub.status);
                                     return (
                                         <div key={sub.id} className="internal-equipment-row">
                                             <span className="subitem-name">{sub.name}</span>
 
                                             <div className="subitem-actions">
-                                                {/* Dropdown Logic identical to SubItemsModal */}
-                                                <div className="sub-item-status-wrapper">
-                                                    <div
-                                                        className={`sub-item-pill`}
-                                                        style={{ padding: '6px 12px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid #444', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                                                        onClick={() => setOpenSubItemId(sub.id === openSubItemId ? null : sub.id)}
-                                                    >
-                                                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getStatusColor(sub.status), boxShadow: `0 0 4px ${getStatusColor(sub.status)}` }}></span>
-                                                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{currentOpt?.text}</span>
-                                                        <span style={{ fontSize: '10px', opacity: 0.7, color: '#fff' }}>▾</span>
+                                                {isOffline ? (
+                                                    // קריאה בלבד כשאופליין
+                                                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '6px 10px', border: '1px solid #555', borderRadius: '12px' }}>
+                                                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getStatusColor(sub.status), display: 'inline-block', marginLeft: '6px' }}></span>
+                                                        {statusOptions.find(o => o.id === sub.status)?.text}
+                                                    </span>
+                                                ) : (
+                                                    <div className="sub-item-status-wrapper">
+                                                        <div
+                                                            className={`sub-item-pill`}
+                                                            style={{ padding: '6px 12px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid #444', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                                            onClick={() => setOpenSubItemId(sub.id === openSubItemId ? null : sub.id)}
+                                                        >
+                                                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getStatusColor(sub.status), boxShadow: `0 0 4px ${getStatusColor(sub.status)}` }}></span>
+                                                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{statusOptions.find(o => o.id === sub.status)?.text}</span>
+                                                            <span style={{ fontSize: '10px', opacity: 0.7, color: '#fff' }}>▾</span>
+                                                        </div>
+
+                                                        {openSubItemId === sub.id && (
+                                                            <>
+                                                                <div className="dropdown-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setOpenSubItemId(null)} />
+                                                                <div className="custom-status-dropdown" style={{ position: 'absolute', top: '100%', left: 0, background: '#2c2c2e', border: '1px solid #444', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', zIndex: 1000, marginTop: '4px', minWidth: '140px', overflow: 'hidden' }}>
+                                                                    {statusOptions.map(opt => (
+                                                                        <div
+                                                                            key={opt.id}
+                                                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', fontSize: '14px', cursor: 'pointer', color: '#fff', textAlign: 'right', direction: 'rtl', background: opt.id === sub.status ? '#48484a' : 'transparent', fontWeight: opt.id === sub.status ? 'bold' : 'normal' }}
+                                                                            onClick={() => {
+                                                                                updateSubItemStatus(item.id, sub.id, opt.id);
+                                                                                setOpenSubItemId(null);
+                                                                            }}
+                                                                        >
+                                                                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getStatusColor(opt.id) }}></span>
+                                                                            {opt.text}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
+                                                )}
 
-                                                    {openSubItemId === sub.id && (
-                                                        <>
-                                                            <div className="dropdown-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setOpenSubItemId(null)} />
-                                                            <div className="custom-status-dropdown" style={{ position: 'absolute', top: '100%', left: 0, background: '#2c2c2e', border: '1px solid #444', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', zIndex: 1000, marginTop: '4px', minWidth: '140px', overflow: 'hidden' }}>
-                                                                {statusOptions.map(opt => (
-                                                                    <div
-                                                                        key={opt.id}
-                                                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', fontSize: '14px', cursor: 'pointer', color: '#fff', textAlign: 'right', direction: 'rtl', background: opt.id === sub.status ? '#48484a' : 'transparent', fontWeight: opt.id === sub.status ? 'bold' : 'normal' }}
-                                                                        onClick={() => {
-                                                                            updateSubItemStatus(item.id, sub.id, opt.id);
-                                                                            setOpenSubItemId(null);
-                                                                        }}
-                                                                    >
-                                                                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getStatusColor(opt.id) }}></span>
-                                                                        {opt.text}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-
-                                                <button
-                                                    className="delete-subitem-btn"
-                                                    onClick={() => handleDeleteSubItem(sub.id, sub.name)}
-                                                    title="מחק פרטי רשמצ"
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                        <path d="M3 6h18"></path>
-                                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                    </svg>
-                                                </button>
+                                                {!isOffline && (
+                                                    <button
+                                                        className="delete-subitem-btn"
+                                                        onClick={() => handleDeleteSubItem(sub.id, sub.name)}
+                                                        title="מחק פרטי רשמצ"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M3 6h18"></path>
+                                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                        </svg>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -195,24 +205,26 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) 
                             )}
                         </div>
 
-                        {/* Add Quick Sub-item */}
-                        <div className="add-subitem-controls">
-                            <input
-                                type="text"
-                                className="internal-item-input"
-                                placeholder="שם פריט פנימי חדש..."
-                                value={newSubItemName}
-                                onChange={(e) => setNewSubItemName(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddSubItem()}
-                            />
-                            <button
-                                className="btn-add-internal"
-                                onClick={handleAddSubItem}
-                                disabled={isAddingSubItem || !newSubItemName.trim()}
-                            >
-                                הוסף
-                            </button>
-                        </div>
+                        {/* Add Quick Sub-item - hidden offline */}
+                        {!isOffline && (
+                            <div className="add-subitem-controls">
+                                <input
+                                    type="text"
+                                    className="internal-item-input"
+                                    placeholder="שם פריט פנימי חדש..."
+                                    value={newSubItemName}
+                                    onChange={(e) => setNewSubItemName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddSubItem()}
+                                />
+                                <button
+                                    className="btn-add-internal"
+                                    onClick={handleAddSubItem}
+                                    disabled={isAddingSubItem || !newSubItemName.trim()}
+                                >
+                                    הוסף
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* --- 2. Comments Section --- */}
@@ -257,27 +269,33 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) 
                             )}
                         </div>
 
-                        {/* Send Comment Area */}
-                        <div className="add-comment-controls">
-                            <textarea
-                                className="comment-input"
-                                placeholder="הקלד הערה..."
-                                value={newCommentText}
-                                onChange={e => setNewCommentText(e.target.value)}
-                                onKeyDown={handleKeyDownComment}
-                                rows={1}
-                            />
-                            <button
-                                className="btn-send-comment"
-                                onClick={handleSendComment}
-                                disabled={isSendingComment || !newCommentText.trim()}
-                            >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }}>
-                                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                </svg>
-                            </button>
-                        </div>
+                        {/* Send Comment Area - hidden offline */}
+                        {isOffline ? (
+                            <div style={{ padding: '10px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px', borderTop: '1px solid #333', marginTop: '8px' }}>
+                                📵 לא ניתן לשלוח הערות במצב אופליין
+                            </div>
+                        ) : (
+                            <div className="add-comment-controls">
+                                <textarea
+                                    className="comment-input"
+                                    placeholder="הקלד הערה..."
+                                    value={newCommentText}
+                                    onChange={e => setNewCommentText(e.target.value)}
+                                    onKeyDown={handleKeyDownComment}
+                                    rows={1}
+                                />
+                                <button
+                                    className="btn-send-comment"
+                                    onClick={handleSendComment}
+                                    disabled={isSendingComment || !newCommentText.trim()}
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }}>
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                 </div>

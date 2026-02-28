@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { createCompetence } from '../firebaseCompetences';
 import '../pages/CompetencesPage.css'; // We can reuse some styles
 import './CompetenceFormModal.css'; // New button styles
@@ -12,6 +13,23 @@ interface Props {
 
 const CompetenceFormModal: React.FC<Props> = ({ isOpen, onClose, groupId }) => {
     const { users, groups, currentUser } = useDatabase();
+    const { isOffline } = useOffline();
+
+    // אם אופליין והמודאל פתוח, הצג הודעה
+    if (isOpen && isOffline) {
+        return (
+            <div className="modal-overlay">
+                <div className="modal-content" style={{ textAlign: 'center', padding: '40px 20px' }}>
+                    <div style={{ fontSize: '40px', marginBottom: '12px' }}>📵</div>
+                    <h3 style={{ marginBottom: '8px' }}>מצב אופליין</h3>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                        לא ניתן ליצור כשירות חדשה ללא חיבור לאינטרנט
+                    </p>
+                    <button className="btn-cancel" onClick={onClose}>סגור</button>
+                </div>
+            </div>
+        );
+    }
 
     const userGroups = groups.filter(g => g.members.includes(currentUser?.uid || ''));
     const [selectedGroupId, setSelectedGroupId] = useState(groupId || (userGroups.length > 0 ? userGroups[0].id : ''));

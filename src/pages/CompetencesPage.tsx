@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import HeaderNav from '../components/HeaderNav';
 import LoadingScreen from '../components/LoadingScreen';
 import { markCompetencePerformed } from '../firebaseCompetences';
@@ -10,6 +11,7 @@ type SortTab = 'members' | 'competences' | 'my_competences';
 
 const CompetencesPage: React.FC = () => {
     const { currentUser, groups, competences, competenceRecords, isLoading, users } = useDatabase();
+    const { isOffline } = useOffline();
 
     // 1. Group Selection Logic
     const userGroups = useMemo(() => {
@@ -383,13 +385,16 @@ const CompetencesPage: React.FC = () => {
                                         </div>
                                     )}
 
-                                    <button
-                                        className="btn-perform"
-                                        onClick={() => handlePerformMyCompetence(competence.id, competence.groupId, competence.renewalDays)}
-                                        style={{ backgroundColor: status.color, boxShadow: `0 4px 12px ${status.color}40` }}
-                                    >
-                                        סמן ביצוע כשירות
-                                    </button>
+                                    {/* סמן ביצוע - נסתר באופליין */}
+                                    {!isOffline && (
+                                        <button
+                                            className="btn-perform"
+                                            onClick={() => handlePerformMyCompetence(competence.id, competence.groupId, competence.renewalDays)}
+                                            style={{ backgroundColor: status.color, boxShadow: `0 4px 12px ${status.color}40` }}
+                                        >
+                                            סמן ביצוע כשירות
+                                        </button>
+                                    )}
                                 </div>
                             );
                         })}

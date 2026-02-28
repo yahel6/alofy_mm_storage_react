@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import HeaderNav from '../components/HeaderNav';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { addNewWarehouse, updateWarehouse } from '../firebaseUtils';
 import type { Warehouse } from '../types';
 import '../components/Form.css';
@@ -18,6 +19,8 @@ export default function WarehouseFormPage() {
   const { warehouseId } = useParams<{ warehouseId: string }>();
   const isEdit = Boolean(warehouseId);
   const navigate = useNavigate();
+  const { isOffline } = useOffline();
+  useEffect(() => { if (isOffline) navigate(-1); }, [isOffline, navigate]);
 
   const { warehouses, groups, isLoading, currentUser } = useDatabase();
 
