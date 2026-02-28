@@ -33,21 +33,21 @@ body {
     --input-bg-color: #252533;
     --text-primary: #ffffff;
     --text-secondary: #a0a0c0;
-    --primary-color: #7c4dff;
-    /* Vibrant Purple */
-    --accent-color: #00e5ff;
-    /* Neon Cyan */
-    --action-color: #7c4dff;
+    --primary-color: #0084ff;
+    /* Electric Blue primary */
+    --accent-color: #00f2ff;
+    /* Neon Cyan accent */
+    --action-color: #0084ff;
     --status-green: #00e676;
     --status-red: #ff5252;
-    --status-orange: #ffd740;
+    --status-orange: #ffab40;
     --status-grey: #78909c;
     --border-radius: 16px;
 
     /* Design Tokens */
     --glass-bg: rgba(26, 26, 36, 0.7);
     --glass-border: rgba(255, 255, 255, 0.1);
-    --glow-shadow: 0 0 15px rgba(124, 77, 255, 0.4);
+    --glow-shadow: 0 0 15px rgba(0, 132, 255, 0.4);
 }
 
 body {

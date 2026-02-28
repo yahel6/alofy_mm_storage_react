@@ -2,18 +2,21 @@
 
 .bottom-nav {
     position: fixed;
-    /* שינוי מ-absolute */
     bottom: 0;
     left: 0;
     right: 0;
     height: calc(65px + env(safe-area-inset-bottom));
-    background-color: var(--card-bg-color);
-    border-top: 1px solid #444;
+    background: rgba(26, 26, 36, 0.85);
+    /* Slightly transparent dark background */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     justify-content: space-around;
     align-items: center;
     padding-bottom: env(safe-area-inset-bottom);
     z-index: 90;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .nav-item {
@@ -22,10 +25,22 @@
     align-items: center;
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
+    /* Slightly smaller for premium look */
+    font-weight: 500;
     text-decoration: none;
-    /* הורדת קו תחתון מלינקים */
-    transition: transform 0.1s ease, color 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 8px 0;
+    flex: 1;
+}
+
+.nav-item.active {
+    color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.nav-item.active svg {
+    filter: drop-shadow(0 0 8px var(--primary-color));
 }
 
 .nav-item:active {

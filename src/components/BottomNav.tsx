@@ -69,7 +69,7 @@ const BottomNav = () => {
       {isManager && (
         <NavLink to="/groups" className="nav-item" style={{ position: 'relative' }}>
           <GroupsIcon />
-          ניהול קבוצות
+          קבוצות
           {hasNotifications && (
             <div className="notification-badge" style={{
               position: 'absolute',
@@ -96,7 +96,7 @@ const BottomNav = () => {
       {currentUser?.role === 'admin' && (
         <NavLink to="/admin/users" className="nav-item" style={{ position: 'relative' }}>
           <AdminUsersIcon />
-          ניהול משתמשים
+          משתמשים
           {users.some(u => !u.approved) && (
             <div className="notification-badge" style={{
               position: 'absolute',

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { createCompetence } from '../firebaseCompetences';
 import '../pages/CompetencesPage.css'; // We can reuse some styles
+import './CompetenceFormModal.css'; // New button styles
 
 interface Props {
     isOpen: boolean;
@@ -176,8 +177,8 @@ const CompetenceFormModal: React.FC<Props> = ({ isOpen, onClose, groupId }) => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                             <label style={{ margin: 0 }}>חברים רלוונטיים ({selectedUserIds.length} נבחרו)</label>
                             <div>
-                                <button type="button" className="action-btn-sm primary" onClick={selectAll}>בחר הכל</button>
-                                <button type="button" className="action-btn-sm secondary" onClick={deselectAll}>נקה הכל</button>
+                                <button type="button" className="action-btn-sm primary" onClick={selectAll} aria-label="בחר את כל חברי הקבוצה">בחר הכל</button>
+                                <button type="button" className="action-btn-sm secondary" onClick={deselectAll} aria-label="בטל בחירה לכולם">נקה הכל</button>
                             </div>
                         </div>
 
