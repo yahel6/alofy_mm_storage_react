@@ -7,6 +7,12 @@ import LoadingScreen from '../components/LoadingScreen';
 import InstallPrompt from '../components/InstallPrompt';
 import './HomePage.css';
 
+const CompetencesIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20px" height="20px">
+    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
+  </svg>
+);
+
 
 // פונקציית עזר לפורמט תאריך (ללא שינוי)
 const formatActivityDate = (dateString: string) => {
@@ -25,14 +31,13 @@ const formatActivityDate = (dateString: string) => {
 };
 
 function HomePage() {
-  const { currentUser, equipment, activities, isLoading } = useDatabase();
+  const { currentUser, equipment, activities, competences, competenceRecords, isLoading } = useDatabase();
   const navigate = useNavigate();
 
   // --- 1. עדכון חישוב נתוני "דורש טיפול" ---
   const attentionItems = useMemo(() => {
-    // הגדרת תאריך הסף לווידוא (לפני 7 ימים)
+    // תאריך הסף יוערך פר פריט (לפי item.validationDays)
     const today = new Date();
-    const validateThreshold = new Date(today.setDate(today.getDate() - 7));
 
     let broken = 0;
     let repair = 0;
@@ -46,6 +51,9 @@ function HomePage() {
       if (item.status === 'loaned') loaned++;
 
       // ספירת ווידוא (רק פריטים שהמשתמש אחראי עליהם)
+      const validateThreshold = new Date(today);
+      validateThreshold.setDate(validateThreshold.getDate() - (item.validationDays ?? 7));
+
       if (new Date(item.lastCheckDate) < validateThreshold &&
         item.status === 'available' &&
         item.managerUserId === currentUser?.uid) {
@@ -53,15 +61,47 @@ function HomePage() {
       }
     });
 
-    return [
-      // --- הוספת השורה החדשה ---
-      { id: 'validate', text: 'פריטים דורשי ווידוא', icon: '🗓️', iconClass: 'icon-orange', count: needsValidation, path: '/items/filter/validate' },
+    // --- חישוב כשירויות פגות/קרובות (צהוב ואדום) ---
+    let competencesAlerts = 0;
+    if (currentUser) {
+      // סינון כשירויות רלוונטיות למשתמש
+      const userCompetences = competences.filter(c =>
+        c.userIds.includes(currentUser.uid) &&
+        currentUser.groupIds?.includes(c.groupId)
+      );
+
+      userCompetences.forEach(comp => {
+        const record = competenceRecords.find(r => r.competenceId === comp.id && r.userId === currentUser.uid);
+        if (!record) {
+          // אין רקורד = פג תוקף (אדום)
+          competencesAlerts++;
+        } else {
+          const expDate = new Date(record.expirationDate);
+          const daysLeft = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+          if (daysLeft <= 0) {
+            // אדום
+            competencesAlerts++;
+          } else if (daysLeft <= 3) {
+            // צהוב
+            competencesAlerts++;
+          }
+        }
+      });
+    }
+
+    const items = [
+      // --- הוספת השורה החדשה לכשירויות (תופיע ראשונה) ---
+      { id: 'competences', text: 'כשירויות', icon: <CompetencesIcon />, iconClass: 'icon-green', count: competencesAlerts, path: '/competences?tab=my', showBadge: competencesAlerts > 0 },
       // --- שאר השורות ---
+      { id: 'validate', text: 'פריטים דורשי ווידוא', icon: '🗓️', iconClass: 'icon-orange', count: needsValidation, path: '/items/filter/validate' },
       { id: 'broken', text: 'פריטים לא כשירים', icon: '!', iconClass: 'icon-red', count: broken, path: '/items/filter/broken' },
       { id: 'repair', text: 'פריטים בתיקון', icon: '🔧', iconClass: 'icon-orange', count: repair, path: '/items/filter/repair' },
       { id: 'loaned', text: 'השאלות שטרם הוחזרו', icon: '→', iconClass: 'icon-orange', count: loaned, path: '/items/filter/loaned' }
     ];
-  }, [equipment]);
+
+    return items;
+  }, [equipment, competences, competenceRecords, currentUser]);
   // --- סוף העדכון ---
 
   // חישוב "פעילויות קרובות" (ללא שינוי)
@@ -106,10 +146,16 @@ function HomePage() {
                 onClick={() => handleAttentionClick(item.path)}
               >
                 <div className="attention-details">
-                  <span className={`attention-icon ${item.iconClass}`}>{item.icon}</span>
+                  <span className={`attention-icon ${item.iconClass}`}>
+                    {item.icon}
+                  </span>
                   <span className="attention-text">{item.text}</span>
                 </div>
-                <div className="attention-count">{item.count} <span className="chevron">&#9664;</span></div>
+                <div className="attention-count" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {item.showBadge && <span className="alert-badge">!</span>}
+                  {item.count}
+                  <span className="chevron">&#9664;</span>
+                </div>
               </div>
             ))}
           </div>

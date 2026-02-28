@@ -1,0 +1,368 @@
+/* src/components/ItemDetailsModal.css */
+
+.item-details-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    backdrop-filter: blur(3px);
+    padding: 16px;
+}
+
+.item-details-modal-content {
+    background-color: var(--bg-color, #121212);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    /* Don't exceed screen height */
+    display: flex;
+    flex-direction: column;
+    color: var(--text-primary, #fff);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color, #333);
+    overflow: hidden;
+}
+
+.modal-header-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color, #333);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.modal-header-section h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-close-icon {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #aaa);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.modal-close-icon:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary, #fff);
+}
+
+.modal-scrollable-body {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Internal Equipment List Section --- */
+
+.internal-equipment-section {
+    padding: 16px 20px;
+    border-bottom: 8px solid rgba(0, 0, 0, 0.3);
+    /* Visual separator */
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 12px 0;
+    color: var(--text-secondary, #aaa);
+}
+
+.internal-equipment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.internal-equipment-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background-color: var(--card-bg-color, #1e1e1e);
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #333);
+}
+
+.subitem-name {
+    font-weight: 500;
+    font-size: 14px;
+    flex: 1;
+    text-align: right;
+    margin-left: 10px;
+}
+
+.subitem-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.delete-subitem-btn {
+    background: transparent;
+    border: none;
+    color: var(--status-red, #ff453a);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.delete-subitem-btn:hover {
+    opacity: 1;
+    background-color: rgba(255, 69, 58, 0.1);
+}
+
+.add-subitem-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.internal-item-input {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #444);
+    background-color: var(--bg-color, #121212);
+    color: var(--text-primary, #fff);
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.btn-add-internal {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background-color: var(--primary-color, #0a84ff);
+    color: #fff;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+.btn-add-internal:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-add-internal:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+/* Sub-item status dropdown */
+.sub-item-status-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+}
+
+/* --- Comments Section (WhatsApp Style) --- */
+
+.comments-section {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.comments-list {
+    height: 180px;
+    /* Internal scrolling within modal */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-left: 4px;
+}
+
+.empty-comments {
+    text-align: center;
+    color: var(--text-secondary, #aaa);
+    margin-top: auto;
+    margin-bottom: auto;
+    font-size: 14px;
+}
+
+.comment-bubble-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+}
+
+.comment-bubble-wrapper.my-comment {
+    align-self: flex-start;
+    /* Right aligned in RTL */
+}
+
+.comment-bubble-wrapper.other-comment {
+    align-self: flex-end;
+    /* Left aligned in RTL */
+}
+
+.comment-bubble {
+    padding: 8px 12px;
+    border-radius: 12px;
+    position: relative;
+    font-size: 14px;
+    line-height: 1.4;
+    word-break: break-word;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.my-comment .comment-bubble {
+    background-color: #056162;
+    /* WhatsApp Dark mode outgoing Green */
+    color: #e9edef;
+    border-top-right-radius: 2px;
+}
+
+.other-comment .comment-bubble {
+    background-color: #202c33;
+    /* WhatsApp Dark mode incoming Dark Grey */
+    color: #e9edef;
+    border-top-left-radius: 2px;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2px;
+    gap: 12px;
+}
+
+.comment-author {
+    font-size: 12px;
+    font-weight: bold;
+    color: #53bdeb;
+    /* Light blue for names */
+}
+
+.my-comment .comment-author {
+    color: #aebac1;
+    /* Less prominent for self */
+}
+
+.comment-text {
+    margin-bottom: 4px;
+    white-space: pre-wrap;
+}
+
+.comment-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.comment-time {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    align-self: flex-end;
+}
+
+.btn-delete-comment {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+}
+
+.comment-bubble:hover .btn-delete-comment {
+    opacity: 1;
+}
+
+.btn-delete-comment:hover {
+    color: var(--status-red, #ff453a);
+}
+
+.add-comment-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background-color: var(--card-bg-color, #1e1e1e);
+    padding: 8px;
+    border-radius: 24px;
+    border: 1px solid var(--border-color, #333);
+}
+
+.comment-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-primary, #fff);
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+    min-height: 40px;
+    max-height: 100px;
+    outline: none;
+}
+
+.comment-input::placeholder {
+    color: var(--text-secondary, #aaa);
+}
+
+.btn-send-comment {
+    background-color: var(--primary-color, #0a84ff);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn-send-comment:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-send-comment:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: scale(1.05);
+}
+
+.btn-send-comment:active:not(:disabled) {
+    transform: scale(0.95);
+}

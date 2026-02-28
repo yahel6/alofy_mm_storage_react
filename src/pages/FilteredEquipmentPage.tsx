@@ -46,11 +46,13 @@ function FilteredEquipmentPage() {
     if (filterConfig.type === 'status' && filterConfig.statuses) {
       return equipment.filter(item => filterConfig.statuses!.includes(item.status));
     }
-    if (filterConfig.type === 'date' && filterConfig.dateThreshold) {
+    if (filterConfig.type === 'date') {
       const today = new Date();
-      const thresholdDate = new Date(today.setDate(today.getDate() - filterConfig.dateThreshold));
       return equipment.filter(item => {
         const itemDate = new Date(item.lastCheckDate);
+        const days = item.validationDays ?? filterConfig.dateThreshold ?? 7;
+        const thresholdDate = new Date(today);
+        thresholdDate.setDate(thresholdDate.getDate() - days);
         return itemDate < thresholdDate && item.status === 'available' && item.managerUserId === currentUser?.uid;
       });
     }

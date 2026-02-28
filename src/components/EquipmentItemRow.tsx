@@ -43,7 +43,7 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
         onLongPress();
         setIsLongPressTriggered(true);
       }
-    }, 800); // 800ms long press delay
+    }, 600); // reduced slightly for better UX on mobile
   };
 
   const endPress = () => {
@@ -71,8 +71,7 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
     <div
       className="equipment-item-content"
       style={{ display: 'flex', alignItems: 'center', userSelect: 'none', WebkitTouchCallout: 'none' }}
-      onContextMenu={(e) => e.preventDefault()}
-      onMouseMove={endPress}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onMouseDown={startPress}
       onMouseUp={endPress}
       onMouseLeave={endPress}
@@ -106,28 +105,30 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
                 {Number(item.quantity)}
               </span>
             )}
-            {/* New Button for Sub-Items */}
-            {item.subItems && item.subItems.length > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onOpenSubItems) onOpenSubItems(item);
-                }}
-                style={{
-                  padding: '2px 8px',
-                  fontSize: '12px',
-                  borderRadius: '4px',
-                  border: '1px solid #666',
-                  background: 'transparent',
-                  color: '#aaa',
-                  marginRight: '8px',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                רשימת ציוד ({item.subItems.length})
-              </button>
-            )}
+            {/* Combined Button for Comments & Sub-Items */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenSubItems) onOpenSubItems(item);
+              }}
+              style={{
+                padding: '2px 8px',
+                fontSize: '11px',
+                borderRadius: '12px',
+                border: '1px solid #444',
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: '#aaa',
+                marginRight: '8px',
+                cursor: 'pointer',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              {item.subItems && item.subItems.length > 0 ? `רשמ"צ (${item.subItems.length}) | ` : ''}
+              הערות ({item.comments?.length || 0})
+            </button>
           </div>
           {item.status !== 'loaned' && (
             <div className="equipment-secondary-info" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -137,16 +138,16 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-          {item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) && (
-            <div className="validation-warning" title="נדרש ווידוא (לא נבדק ב-7 ימים האחרונים)">
+          {item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - (item.validationDays ?? 7) * 24 * 60 * 60 * 1000) && (
+            <div className="validation-warning" title={`נדרש ווידוא (לא נבדק ב-${item.validationDays ?? 7} ימים האחרונים)`}>
               ⚠️
-              <span className="warning-text">דורש וידוא</span>
+              <span className="warning-text">וידוא</span>
             </div>
           )}
 
-          <div className={`equipment-status ${statusMap[item.status]?.class || 'status-grey'}`}>
-            <span className="status-dot"></span>
-            <span>{statusMap[item.status]?.text || 'לא ידוע'}</span>
+          <div className={`equipment-status ${statusMap[item.status]?.class || 'status-grey'}`} style={{ padding: item.status === 'available' ? '4px' : undefined }}>
+            <span className="status-dot" style={{ marginRight: item.status === 'available' ? '0' : undefined }}></span>
+            {item.status !== 'available' && <span>{statusMap[item.status]?.text || 'לא ידוע'}</span>}
           </div>
         </div>
       </div>

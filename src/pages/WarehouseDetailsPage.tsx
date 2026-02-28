@@ -8,7 +8,7 @@ import EquipmentItemRow from '../components/EquipmentItemRow';
 import FilterChips from '../components/FilterChips';
 import StatusModal from '../components/StatusModal';
 import WarehouseOptionsModal from '../components/WarehouseOptionsModal';
-import SubItemsModal from '../components/SubItemsModal';
+import ItemDetailsModal from '../components/ItemDetailsModal';
 import ValidationModal from '../components/ValidationModal';
 import LoadingScreen from '../components/LoadingScreen';
 import {
@@ -17,7 +17,8 @@ import {
   bulkUpdateStatus,
   bulkMoveItemsToWarehouse,
   bulkAssignItemsToActivity,
-  updateGroupStatusByQuantity
+  updateGroupStatusByQuantity,
+  bulkUpdateValidationDays
 } from '../firebaseUtils';
 import type { EquipmentItem } from '../types';
 import '../components/Modal.css'; // Import generic modal styles
@@ -52,7 +53,7 @@ function WarehouseDetailsPage() {
   const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
 
   // Bulk Action Modals State
-  const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'activity' | 'category' | null>(null);
+  const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'activity' | 'category' | 'validationDays' | null>(null);
   const [tempSelection, setTempSelection] = useState<string>(''); // For storing the selected Status/WarehouseId/ActivityId
 
   // State for splitting
@@ -95,6 +96,13 @@ function WarehouseDetailsPage() {
         success = await bulkMoveItemsToWarehouse(ids, tempSelection);
       } else if (bulkAction === 'activity') {
         success = await bulkAssignItemsToActivity(ids, tempSelection);
+      } else if (bulkAction === 'validationDays') {
+        const days = parseInt(tempSelection, 10);
+        if (days > 0) {
+          success = await bulkUpdateValidationDays(ids, days);
+        } else {
+          success = false;
+        }
       }
     } catch (err) {
       console.error("Error in performActionOnIds:", err);
@@ -156,11 +164,15 @@ function WarehouseDetailsPage() {
 
     if (activeFilter !== 'all') {
       const today = new Date();
-      const validationThreshold = new Date(new Date().setDate(today.getDate() - 7));
 
       switch (activeFilter) {
         case 'validate':
-          items = items.filter(item => new Date(item.lastCheckDate) < validationThreshold && item.status === 'available');
+          items = items.filter(item => {
+            const days = item.validationDays ?? 7;
+            const threshold = new Date(today);
+            threshold.setDate(threshold.getDate() - days);
+            return new Date(item.lastCheckDate) < threshold && item.status === 'available';
+          });
           break;
         case 'broken':
           items = items.filter(item => item.status === 'broken' || item.status === 'repair');
@@ -360,6 +372,18 @@ function WarehouseDetailsPage() {
           {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
       );
+    } else if (bulkAction === 'validationDays') {
+      title = 'ימי וידוא נדרשים';
+      content = (
+        <input
+          type="number"
+          className="form-select"
+          value={tempSelection}
+          onChange={e => setTempSelection(e.target.value)}
+          placeholder="הכנס מספר ימים (ברירת מחדל 7)..."
+          min="1"
+        />
+      );
     }
 
     return (
@@ -504,6 +528,7 @@ function WarehouseDetailsPage() {
                   <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('category'); }}>🏷️ קטגוריה</button>
                   <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('move'); }}>📦 העברה</button>
                   <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('activity'); }}>📌 לפעילות</button>
+                  <button className="bulk-btn" onClick={() => { setTempSelection('7'); setBulkAction('validationDays'); }}>⏱️ זמן וידוא</button>
                 </>
               )}
             </div>
@@ -598,7 +623,7 @@ function WarehouseDetailsPage() {
       )}
 
       {subItemsModalItemId && (
-        <SubItemsModal
+        <ItemDetailsModal
           itemId={subItemsModalItemId}
           onClose={() => setSubItemsModalItemId(null)}
         />

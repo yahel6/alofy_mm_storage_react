@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import HeaderNav from '../components/HeaderNav';
 import LoadingScreen from '../components/LoadingScreen';
@@ -19,10 +20,26 @@ const CompetencesPage: React.FC = () => {
     const defaultGroupId = currentUser?.dominantGroupId || (userGroups.length > 0 ? userGroups[0].id : '');
     const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId);
 
-    const [activeTab, setActiveTab] = useState<SortTab>('members');
+    const location = useLocation();
+
+    // Parse tab from URL or default to 'members'
+    const initialTab = useMemo(() => {
+        const params = new URLSearchParams(location.search);
+        const tabParam = params.get('tab');
+        if (tabParam === 'my') return 'my_competences';
+        if (tabParam === 'competences') return 'competences';
+        return 'members';
+    }, [location.search]);
+
+    const [activeTab, setActiveTab] = useState<SortTab>(initialTab);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
     const [fullViewData, setFullViewData] = useState<{ type: 'member' | 'competence', id: string, name: string } | null>(null);
+
+    // Update activeTab if URL changes
+    useEffect(() => {
+        setActiveTab(initialTab);
+    }, [initialTab]);
 
     const toggleNote = (compId: string) => {
         setExpandedNotes(prev => ({ ...prev, [compId]: !prev[compId] }));

@@ -27,6 +27,7 @@ function EquipmentFormPage() {
     lastCheckDate: new Date().toISOString().split('T')[0], // ברירת מחדל להיום
     quantity: 1,
     subItems: [],
+    validationDays: 7,
   });
 
   // אפקט להגדרת ברירות מחדל (מחסן ומשתמש)
@@ -99,7 +100,7 @@ function EquipmentFormPage() {
     }
 
     let finalValue: any = value;
-    if (id === 'quantity') {
+    if (id === 'quantity' || id === 'validationDays') {
       finalValue = Number(value);
     } else if (id === 'category' && value === '') {
       finalValue = null;
@@ -267,6 +268,17 @@ function EquipmentFormPage() {
               value={formData.lastCheckDate}
               onChange={handleChange}
               required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="validationDays">ימי וידוא נדרשים</label>
+            <input
+              type="number"
+              id="validationDays"
+              value={formData.validationDays ?? 7}
+              onChange={handleChange}
+              min="1"
             />
           </div>
 

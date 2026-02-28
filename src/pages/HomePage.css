@@ -183,3 +183,21 @@
 .icon-orange {
     color: var(--status-orange);
 }
+
+.icon-green {
+    color: var(--status-green);
+}
+
+.alert-badge {
+    background-color: var(--status-red);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 5px rgba(255, 69, 58, 0.5);
+}

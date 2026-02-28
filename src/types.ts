@@ -38,7 +38,15 @@ export interface Warehouse {
   /** רשימת קטגוריות שהמחסן תומך בהן (אופציונלי) */
   categories?: string[];
   /** מזהה הקבוצה אליה המחסן משוייך (אופציונלי) */
-  groupId?: string;
+  groupId: string;
+}
+
+export interface EquipmentComment {
+  id: string;
+  text: string;
+  userId: string;
+  userName?: string;
+  createdAt: string;
 }
 
 // סוגי הסטטוסים האפשריים לפריט
@@ -59,6 +67,10 @@ export interface EquipmentItem {
   assignedActivityName?: string | null;
   quantity?: number;
   subItems?: SubItem[];
+  imageUrl?: string;
+  /** כל כמה ימים צריך לוודא את הציוד (ברירת מחדל 7) */
+  validationDays?: number;
+  comments?: EquipmentComment[];
 }
 
 export interface SubItem {

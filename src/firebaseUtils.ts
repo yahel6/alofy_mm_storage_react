@@ -642,6 +642,28 @@ export const bulkUpdateStatus = async (itemIds: string[], newStatus: EquipmentSt
 };
 
 /**
+ * עדכון ימי וידוא נדרשים למספר פריטים
+ */
+export const bulkUpdateValidationDays = async (itemIds: string[], newValidationDays: number) => {
+  if (!itemIds.length) return false;
+  const batch = writeBatch(db);
+
+  itemIds.forEach(id => {
+    const ref = doc(db, 'equipment', id);
+    batch.update(ref, { validationDays: newValidationDays });
+  });
+
+  try {
+    await batch.commit();
+    console.log("עדכון ימי וידוא קבוצתי הושלם.");
+    return true;
+  } catch (error) {
+    console.error("error bulk validation days:", error);
+    return false;
+  }
+};
+
+/**
  * העברת פריטים למחסן אחר
  */
 
@@ -1283,6 +1305,104 @@ export const deleteGroup = async (groupId: string) => {
     return true;
   } catch (error) {
     console.error("שגיאה במחיקת קבוצה:", error);
+    return false;
+  }
+};
+
+// --- Comments & Internal Equipment Actions ---
+
+/**
+ * הוספת הערה לפריט ציוד
+ */
+export const addEquipmentComment = async (itemId: string, text: string, userId: string, userName?: string) => {
+  const itemRef = doc(db, 'equipment', itemId);
+  try {
+    const newComment = {
+      id: crypto.randomUUID(),
+      text,
+      userId,
+      userName: userName || 'משתמש',
+      createdAt: new Date().toISOString()
+    };
+    await updateDoc(itemRef, {
+      comments: arrayUnion(newComment)
+    });
+    return true;
+  } catch (error) {
+    console.error("שגיאה בהוספת הערה:", error);
+    return false;
+  }
+};
+
+/**
+ * מחיקת הערה מפריט ציוד
+ */
+export const deleteEquipmentComment = async (itemId: string, commentId: string) => {
+  const itemRef = doc(db, 'equipment', itemId);
+  try {
+    const snap = await getDoc(itemRef);
+    if (!snap.exists()) return false;
+    const data = snap.data();
+    const comments = data.comments || [];
+    const updatedComments = comments.filter((c: any) => c.id !== commentId);
+
+    await updateDoc(itemRef, { comments: updatedComments });
+    return true;
+  } catch (error) {
+    console.error("שגיאה במחיקת הערה:", error);
+    return false;
+  }
+};
+
+/**
+ * הוספת תת-פריט (רשמ"צ יחיד) לפריט ציוד
+ */
+export const addInternalEquipment = async (itemId: string, subItemName: string) => {
+  if (!subItemName.trim()) return false;
+  const itemRef = doc(db, 'equipment', itemId);
+
+  try {
+    const newSubItem = {
+      id: crypto.randomUUID(),
+      name: subItemName.trim(),
+      status: 'available' as EquipmentStatus
+    };
+
+    // Using arrayUnion directly might skip checking derivedStatus automatically, 
+    // but a newly added 'available' item won't degrade the status.
+    await updateDoc(itemRef, {
+      subItems: arrayUnion(newSubItem)
+    });
+    return true;
+  } catch (error) {
+    console.error("שגיאה בהוספת סעיף רשמצ:", error);
+    return false;
+  }
+};
+
+/**
+ * מחיקת תת-פריט מתוך ציוד קיים ומחושב מחדש
+ */
+export const removeInternalEquipment = async (itemId: string, subItemId: string) => {
+  const ref = doc(db, 'equipment', itemId);
+  try {
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+
+    const data = snap.data() as EquipmentItem;
+    const subItems = data.subItems || [];
+    const updatedSubItems = subItems.filter(sub => sub.id !== subItemId);
+
+    const derivedStatus = calculateDerivedStatus(updatedSubItems);
+
+    await updateDoc(ref, {
+      subItems: updatedSubItems,
+      status: derivedStatus,
+      lastCheckDate: new Date().toISOString().split('T')[0]
+    });
+    return true;
+  } catch (error) {
+    console.error("שגיאה במחיקת תת-פריט:", error);
     return false;
   }
 };
