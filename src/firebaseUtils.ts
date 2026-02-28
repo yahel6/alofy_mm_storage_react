@@ -1,6 +1,6 @@
 import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove, query, where, getDocs, arrayUnion } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import type { EquipmentItem, Activity, Warehouse, Group } from './types';
+import type { EquipmentItem, Activity, Warehouse, Group, AppUser } from './types';
 
 // סוגי הסטטוסים האפשריים לפריט (לפי סדר עדיפויות חומרה)
 export type EquipmentStatus = 'broken' | 'missing' | 'repair' | 'charging' | 'loaned' | 'available';
@@ -579,12 +579,12 @@ export const bulkUpdateCategory = async (itemIds: string[], newCategory: string 
 };
 
 /**
- * מעדכן את הפרופיל של המשתמש (שם תצוגה)
+ * מעדכן את הפרופיל של המשתמש (שם תצוגה, קבוצה דומיננטית וכו')
  */
-export const updateUserProfile = async (uid: string, displayName: string) => {
+export const updateUserProfile = async (uid: string, updates: Partial<AppUser>) => {
   const userRef = doc(db, 'users', uid);
   try {
-    await updateDoc(userRef, { displayName });
+    await updateDoc(userRef, updates);
     console.log(`פרופיל משתמש ${uid} עודכן בהצלחה.`);
     return true;
   } catch (error) {

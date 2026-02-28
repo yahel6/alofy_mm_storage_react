@@ -13,6 +13,11 @@ const ActivityIcon = () => (
 const WarehouseIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zM3 16.5c.83 0 1.5.67 1.5 1.5S3.83 19.5 3 19.5s-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zM20 6l-1.97-2H5.97L4 6H1v11h2.06c.05-.8.36-1.52.84-2.11-.8-.3-1.4-1.01-1.4-1.89 0-1.1.9-2 2-2s2 .9 2 2c0 .88-.6 1.59-1.4 1.89.48.59.79 1.31.84 2.11H17.5c.05-.8.36-1.52.84-2.11-.8-.3-1.4-1.01-1.4-1.89 0-1.1.9-2 2-2s2 .9 2 2c0 .88-.6 1.59-1.4 1.89.48.59.79 1.31.84 2.11H23V6h-3zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM5.14 8h13.72l.96-1H4.18l.96 1z" /></svg>
 );
+const CompetencesIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
+  </svg>
+);
 const AdminUsersIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm6 1c1.66 0 3-1.34 3-3s-1.34-3-3-3c-.36 0-.7.07-1.02.18.63.89 1.02 1.97 1.02 3.15s-.39 2.26-1.02 3.15c.32.11.66.18 1.02.18zm-12 0c.36 0 .7-.07 1.02-.18-.63-.89-1.02-1.97-1.02-3.15s.39-2.26 1.02-3.15C6.7 6.07 6.36 6 6 6c-1.66 0-3 1.34-3 3s1.34 3 3 3zm12 2c-2.33 0-7 1.17-7 3.5V21h14v-2.5c0-2.33-4.67-3.5-7-3.5zm-12 0c-2.33 0-7 1.17-7 3.5V21h8v-2.5c0-1.61.85-2.57 2.05-3.23C8.88 15.07 7.55 15 6 15z" /></svg>
 );
@@ -56,6 +61,10 @@ const BottomNav = () => {
       <NavLink to="/warehouses" className="nav-item">
         <WarehouseIcon />
         מחסן
+      </NavLink>
+      <NavLink to="/competences" className="nav-item">
+        <CompetencesIcon />
+        כשירויות
       </NavLink>
       {isManager && (
         <NavLink to="/groups" className="nav-item" style={{ position: 'relative' }}>

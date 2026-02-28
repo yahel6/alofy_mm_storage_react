@@ -1,6 +1,6 @@
 // src/components/QuickAddModal.tsx
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './Modal.css'; // שימוש חוזר בעיצוב המודאל הקיים
 
 interface QuickAddModalProps {
@@ -21,6 +21,8 @@ const EquipmentIcon = () => (
 const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, warehouseId }) => {
   const navigate = useNavigate();
 
+  const location = useLocation();
+
   if (!isOpen) {
     return null;
   }
@@ -30,22 +32,37 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, warehous
     navigate(path); // נווט לעמוד הטופס
   };
 
+  const isCompetencesPage = location.pathname === '/competences';
+
   return (
     <div className="modal-overlay active" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-options">
-          <div onClick={() => handleNavigation('/activity/new')}>
-            <ActivityIcon />
-            הוסף פעילות חדשה
-          </div>
-          <div onClick={() => handleNavigation(`/item/new${warehouseId ? `?warehouseId=${warehouseId}` : ''}`)}>
-            <EquipmentIcon />
-            הוסף פריט ציוד חדש
-          </div>
-          <div onClick={() => handleNavigation('/warehouses/new')}>
-            <EquipmentIcon />
-            הוסף מחסן חדש
-          </div>
+          {isCompetencesPage ? (
+            <div onClick={() => handleNavigation('/competences/new')}>
+              <ActivityIcon />
+              הוספת כשירות חדשה
+            </div>
+          ) : (
+            <>
+              <div onClick={() => handleNavigation('/activity/new')}>
+                <ActivityIcon />
+                הוסף פעילות חדשה
+              </div>
+              <div onClick={() => handleNavigation(`/item/new${warehouseId ? `?warehouseId=${warehouseId}` : ''}`)}>
+                <EquipmentIcon />
+                הוסף פריט ציוד חדש
+              </div>
+              <div onClick={() => handleNavigation('/warehouses/new')}>
+                <EquipmentIcon />
+                הוסף מחסן חדש
+              </div>
+              <div onClick={() => handleNavigation('/competences/new')}>
+                <ActivityIcon />
+                הוספת כשירות חדשה
+              </div>
+            </>
+          )}
         </div>
         <button className="modal-button btn-cancel" onClick={onClose}>
           ביטול

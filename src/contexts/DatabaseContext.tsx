@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, useMemo, type ReactNode
 import { collection, onSnapshot, doc, setDoc, type DocumentData } from 'firebase/firestore';
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { db, auth } from '../firebaseConfig';
-import type { AppUser, Warehouse, EquipmentItem, Activity, Group } from '../types';
+import type { AppUser, Warehouse, EquipmentItem, Activity, Group, Competence, CompetenceRecord } from '../types';
 
 // הגדרת מה ה-Context יספק
 interface DatabaseContextState {
@@ -12,9 +12,10 @@ interface DatabaseContextState {
   warehouses: Warehouse[];
   allWarehouses: Warehouse[];
   equipment: EquipmentItem[];
-  allEquipment: EquipmentItem[];
   activities: Activity[];
   allActivities: Activity[];
+  competences: Competence[];
+  competenceRecords: CompetenceRecord[];
   isLoading: boolean;
   currentUser: AppUser | null;
 }
@@ -29,6 +30,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [competences, setCompetences] = useState<Competence[]>([]);
+  const [competenceRecords, setRecords] = useState<CompetenceRecord[]>([]);
 
   // נהפוך את isLoading לאובייקט שעוקב אחרי כל טעינה בנפרד
   const [loadingStates, setLoadingStates] = useState({
@@ -37,6 +40,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     warehouses: true,
     equipment: true,
     activities: true,
+    competences: true,
+    competenceRecords: true,
   });
 
   // State למשתמש Auth ומשתמש אפליקציה
@@ -83,6 +88,16 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       setLoadingStates(prev => ({ ...prev, activities: false }));
     });
 
+    const unsubCompetences = onSnapshot(collection(db, 'competences'), (snapshot) => {
+      setCompetences(mapSnapshot<Competence>(snapshot));
+      setLoadingStates(prev => ({ ...prev, competences: false }));
+    });
+
+    const unsubCompetenceRecords = onSnapshot(collection(db, 'competenceRecords'), (snapshot) => {
+      setRecords(mapSnapshot<CompetenceRecord>(snapshot));
+      setLoadingStates(prev => ({ ...prev, competenceRecords: false }));
+    });
+
     // האזנה לשינויי התחברות (Auth)
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setAuthUser(user); // שמור את משתמש ה-Auth
@@ -94,6 +109,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       unsubWarehouses();
       unsubEquipment();
       unsubActivities();
+      unsubCompetences();
+      unsubCompetenceRecords();
       unsubAuth();
     };
   }, []); // [] ריק - תריץ רק פעם אחת
@@ -171,6 +188,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     allEquipment: equipment,
     activities: filteredActivities,
     allActivities: activities,
+    competences,
+    competenceRecords,
     isLoading,
     currentUser
   };

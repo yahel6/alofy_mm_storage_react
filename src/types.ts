@@ -11,6 +11,8 @@ export interface AppUser {
   groupIds?: string[];
   /** מפה של מזהה קבוצה -> זמן אחרון שבו המשתמש ראה את בקשות ההצטרפות */
   lastSeenRequests?: { [groupId: string]: string };
+  /** הקבוצה הדומיננטית של המשתמש (תוצג כברירת מחדל במסך כשירויות) */
+  dominantGroupId?: string;
 }
 
 // טיפוס קבוצה
@@ -75,4 +77,29 @@ export interface Activity {
   equipmentMissingIds: string[];
   /** מזהה הקבוצה אליה הפעילות משוייכת (אופציונלי) */
   groupId?: string;
+}
+
+// טיפוס כשירות (Competence)
+export interface Competence {
+  id: string;
+  groupId: string;
+  name: string;
+  /** כל כמה ימים צריך לחדש את הכשירות */
+  renewalDays: number;
+  /** רשימת UIDs של המשתמשים שהכשירות חלה עליהם במסגרת הקבוצה */
+  userIds: string[];
+  /** הערות או פירוט על הכשירות */
+  notes?: string;
+  createdAt: string;
+}
+
+// רישום ביצוע כשירות (Competence Record) - מתי בפעם האחרונה משתמש ביצע כשירות מסוימת
+export interface CompetenceRecord {
+  id: string;
+  competenceId: string;
+  userId: string;
+  /** מזהה קבוצה, כדי שקל יהיה למחוק/לשלוף או למיין */
+  groupId: string;
+  lastPerformedDate: string;
+  expirationDate: string; // lastPerformedDate + renewalDays
 }

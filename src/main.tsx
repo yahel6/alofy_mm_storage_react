@@ -27,6 +27,8 @@ import AdminUsersPage from './pages/AdminUsersPage.tsx';
 import ProfilePage from './pages/ProfilePage.tsx';
 import GroupManagementPage from './pages/GroupManagementPage.tsx';
 import GroupFormPage from './pages/GroupFormPage.tsx';
+import CompetencesPage from './pages/CompetencesPage.tsx';
+import AddCompetencePage from './pages/AddCompetencePage.tsx';
 import AdminOnly from './components/AdminOnlyRoute.tsx';
 
 
@@ -56,6 +58,14 @@ const router = createBrowserRouter([
       {
         path: "warehouses", // רשימת מחסנים
         element: <WarehousesPage />,
+      },
+      {
+        path: "competences", // עמוד כשירויות
+        element: <CompetencesPage />,
+      },
+      {
+        path: "competences/new", // עמוד הוספת כשירות
+        element: <AddCompetencePage />,
       },
       {
         path: "warehouses/:warehouseId", // פרטי מחסן ספציפי

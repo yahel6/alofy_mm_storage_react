@@ -10,6 +10,7 @@ const ProfilePage: React.FC = () => {
     const { currentUser, users, groups } = useDatabase();
     // We get the full user object from the database context to ensure we have the latest display name
     const [displayName, setDisplayName] = useState('');
+    const [dominantGroupId, setDominantGroupId] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -18,6 +19,7 @@ const ProfilePage: React.FC = () => {
             // Priority: displayName from users list (firestore) -> currentUser.displayName (auth)
             const dbUser = users.find(u => u.uid === currentUser.uid);
             setDisplayName(dbUser?.displayName || currentUser.displayName || '');
+            setDominantGroupId(dbUser?.dominantGroupId || '');
         }
     }, [currentUser, users]);
 
@@ -28,7 +30,10 @@ const ProfilePage: React.FC = () => {
         setLoading(true);
         setMessage(null);
 
-        const success = await updateUserProfile(currentUser.uid, displayName);
+        const success = await updateUserProfile(currentUser.uid, {
+            displayName,
+            dominantGroupId
+        });
 
         if (success) {
             setMessage({ type: 'success', text: 'פרופיל עודכן בהצלחה' });
@@ -77,6 +82,38 @@ const ProfilePage: React.FC = () => {
                             שם זה יופיע בפעילויות ובציוד עליו אתה אחראי.
                         </small>
                     </div>
+
+                    {/* בחירת קבוצה דומיננטית */}
+                    {groups && groups.filter(g => g.members.includes(currentUser?.uid || '')).length > 0 && (
+                        <div className="form-group" style={{ marginTop: '20px' }}>
+                            <label htmlFor="dominantGroup">קבוצה מועדפת (דף כשירויות)</label>
+                            <select
+                                id="dominantGroup"
+                                value={dominantGroupId}
+                                onChange={(e) => setDominantGroupId(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    background: 'var(--input-bg-color)',
+                                    color: 'white',
+                                    fontSize: '1em'
+                                }}
+                            >
+                                <option value="">ללא קבוצה מועדפת</option>
+                                {groups
+                                    .filter(g => g.members.includes(currentUser?.uid || ''))
+                                    .map(g => (
+                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                    ))
+                                }
+                            </select>
+                            <small style={{ color: '#aaa', marginTop: '4px', display: 'block' }}>
+                                קבוצה זו תוצג כברירת מחדל במסך הכשירויות.
+                            </small>
+                        </div>
+                    )}
 
                     {message && (
                         <div style={{
