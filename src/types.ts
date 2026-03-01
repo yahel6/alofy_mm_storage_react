@@ -81,6 +81,13 @@ export interface SubItem {
   status: EquipmentStatus;
 }
 
+// טיפוס פריט רשמ"צ פשוט (ללא מלאי)
+export interface SimpleEquipmentItem {
+  id: string;
+  name: string;
+  isVerified: boolean;
+}
+
 // טיפוס פעילות
 export interface Activity {
   id: string;
@@ -89,6 +96,8 @@ export interface Activity {
   date: string;
   equipmentRequiredIds: string[];
   equipmentMissingIds: string[];
+  /** רשימת פריטים פשוטה (וואטסאפ סטייל) */
+  simpleEquipment?: SimpleEquipmentItem[];
   /** מזהה הקבוצה אליה הפעילות משוייכת (אופציונלי) */
   groupId?: string;
 }

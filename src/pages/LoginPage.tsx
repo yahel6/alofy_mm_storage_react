@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, type User } from "firebase/auth";
-import { auth } from '../firebaseConfig'; 
+import { auth } from '../firebaseConfig';
+import { useDialog } from '../contexts/DialogContext';
 
 import './LoginPage.css'; // 1. ייבוא קובץ העיצוב החדש
 
@@ -20,6 +21,7 @@ function LoginPage() {
   // כל הלוגיקה נשארת זהה
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { showAlert } = useDialog();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -35,7 +37,7 @@ function LoginPage() {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("שגיאה בהתחברות:", error);
-      alert("אירעה שגיאה בהתחברות. נסה שוב.");
+      await showAlert("אירעה שגיאה בהתחברות. נסה שוב.");
     }
   };
 
@@ -50,7 +52,7 @@ function LoginPage() {
   // 3. החלפת ה-HTML ב-JSX החדש
   return (
     <div className="login-page-container">
-      
+
       {/* היהלום המסתובב */}
       <div className="diamond-container">
         <div className="diamond">

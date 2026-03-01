@@ -1,8 +1,9 @@
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import LoadingScreen from '../components/LoadingScreen';
 import { markCompetencePerformed } from '../firebaseCompetences';
 import './CompetencesPage.css';
@@ -250,16 +251,13 @@ const CompetencesPage: React.FC = () => {
                 {/* Group Selector */}
                 {userGroups.length > 0 && activeTab !== 'my_competences' && (
                     <div className="group-selector-container">
-                        <select
+                        <CustomSelect
                             className="group-selector"
                             value={selectedGroupId}
-                            onChange={(e) => setSelectedGroupId(e.target.value)}
-                        >
-                            <option value="" disabled>-- בחר קבוצה --</option>
-                            {userGroups.map(g => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                        </select>
+                            onChange={setSelectedGroupId}
+                            options={userGroups.map(g => ({ value: g.id, label: g.name }))}
+                            placeholder="-- בחר קבוצה --"
+                        />
                     </div>
                 )}
 

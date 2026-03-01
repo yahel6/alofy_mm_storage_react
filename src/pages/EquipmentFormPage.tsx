@@ -3,8 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
+import { useDialog } from '../contexts/DialogContext';
 import { addNewEquipment, updateEquipmentItem, calculateDerivedStatus } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import '../components/Form.css'; // ייבוא עיצוב הטופס
 import type { EquipmentItem, Warehouse } from '../types';
 
@@ -17,6 +19,7 @@ function EquipmentFormPage() {
   const { equipment, users, warehouses, isLoading, currentUser } = useDatabase();
   const [searchParams] = useSearchParams();
   const { isOffline } = useOffline();
+  const { showAlert, showConfirm } = useDialog();
 
   // אם אופליין - הפנה חזרה
   useEffect(() => {
@@ -123,7 +126,7 @@ function EquipmentFormPage() {
     e.preventDefault();
 
     if (!formData.name || !formData.warehouseId || !formData.lastCheckDate) {
-      alert("אנא מלא את שדות החובה: שם, מחסן ותאריך.");
+      await showAlert("אנא מלא את שדות החובה: שם, מחסן ותאריך.", "שגיאה");
       return;
     }
 
@@ -134,7 +137,7 @@ function EquipmentFormPage() {
         // חזור לעמוד המחסן שממנו באנו
         navigate(`/warehouses/${formData.warehouseId}`);
       } else {
-        alert("שגיאה בעדכון הפריט.");
+        await showAlert("שגיאה בעדכון הפריט.", "שגיאה");
       }
     } else {
       // --- מצב הוספה ---
@@ -143,7 +146,7 @@ function EquipmentFormPage() {
         // חזור למחסן שאליו הוספנו את הפריט
         navigate(`/warehouses/${formData.warehouseId}`);
       } else {
-        alert("שגיאה בהוספת הפריט.");
+        await showAlert("שגיאה בהוספת הפריט.", "שגיאה");
       }
     }
   };
@@ -203,66 +206,64 @@ function EquipmentFormPage() {
 
           <div className="form-group">
             <label htmlFor="warehouseId">שייך למחסן</label>
-            <select
-              id="warehouseId"
+            <CustomSelect
               value={formData.warehouseId}
-              onChange={handleChange}
-              required
-            >
-              <option value="">בחר מחסן...</option>
-              {warehouses.map(w => (
-                <option key={w.id} value={w.id}>{w.name}</option>
-              ))}
-            </select>
+              onChange={(val) => {
+                setFormData(prev => ({
+                  ...prev,
+                  warehouseId: val,
+                  category: null,
+                }));
+              }}
+              options={warehouses.map(w => ({ value: w.id, label: w.name }))}
+              placeholder="בחר מחסן..."
+            />
           </div>
 
           {/* ⬇️ חדש: בחירת קטגוריה מתוך המחסן (אם קיימות) */}
           {formData.warehouseId && categories.length > 0 && (
             <div className="form-group">
               <label htmlFor="category">קטגוריה במחסן</label>
-              <select
-                id="category"
+              <CustomSelect
                 value={formData.category ?? ''}
-                onChange={handleChange}
-              >
-                <option value="">ללא קטגוריה</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+                onChange={(val) => handleChange({ target: { id: 'category', value: val } } as any)}
+                options={[
+                  { value: "", label: "ללא קטגוריה" },
+                  ...categories.map(cat => ({ value: cat, label: cat }))
+                ]}
+                placeholder="ללא קטגוריה"
+              />
               <small style={{ color: '#aaa' }}>הקטגוריות מוגדרות במחסן. ערוך אותן במסך המחסן.</small>
             </div>
           )}
 
           <div className="form-group">
             <label htmlFor="managerUserId">אחראי</label>
-            <select
-              id="managerUserId"
+            <CustomSelect
               value={formData.managerUserId}
-              onChange={handleChange}
-            >
-              <option value="">ללא אחראי</option>
-              {users.map(u => (
-                <option key={u.uid} value={u.uid}>{u.displayName}</option>
-              ))}
-            </select>
+              onChange={(val) => handleChange({ target: { id: 'managerUserId', value: val } } as any)}
+              options={[
+                { value: "", label: "ללא אחראי" },
+                ...users.map(u => ({ value: u.uid, label: u.displayName || 'ללא שם' }))
+              ]}
+              placeholder="ללא אחראי"
+            />
           </div>
 
           <div className="form-group">
             <label htmlFor="status">סטטוס התחלתי</label>
-            <select
-              id="status"
+            <CustomSelect
               value={formData.status}
-              onChange={handleChange}
-              required
-            >
-              <option value="available">כשיר</option>
-              <option value="charging">בטעינה</option>
-              <option value="loaned">בפעילות</option>
-              <option value="repair">בתיקון</option>
-              <option value="broken">לא כשיר</option>
-              <option value="missing">חסר</option>
-            </select>
+              onChange={(val) => handleChange({ target: { id: 'status', value: val } } as any)}
+              options={[
+                { value: "available", label: "כשיר" },
+                { value: "charging", label: "בטעינה" },
+                { value: "loaned", label: "בפעילות" },
+                { value: "repair", label: "בתיקון" },
+                { value: "broken", label: "לא כשיר" },
+                { value: "missing", label: "חסר" },
+              ]}
+            />
           </div>
 
           <div className="form-group">
@@ -333,27 +334,29 @@ function EquipmentFormPage() {
                       style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #444', background: '#333', color: 'white' }}
                       required
                     />
-                    <select
+                    <CustomSelect
                       value={sub.status}
-                      onChange={(e) => {
+                      onChange={(val) => {
                         const newSubItems = [...(formData.subItems || [])];
-                        newSubItems[index] = { ...newSubItems[index], status: e.target.value as any };
+                        newSubItems[index] = { ...newSubItems[index], status: val as any };
                         const derivedStatus = calculateDerivedStatus(newSubItems);
                         setFormData({ ...formData, subItems: newSubItems, status: derivedStatus });
                       }}
-                      style={{ padding: '8px', borderRadius: '4px', border: '1px solid #444', background: '#333', color: 'white' }}
-                    >
-                      <option value="available">כשיר</option>
-                      <option value="charging">בטעינה</option>
-                      <option value="loaned">בפעילות</option>
-                      <option value="repair">בתיקון</option>
-                      <option value="broken">לא כשיר</option>
-                      <option value="missing">חסר</option>
-                    </select>
+                      options={[
+                        { value: "available", label: "כשיר" },
+                        { value: "charging", label: "בטעינה" },
+                        { value: "loaned", label: "בפעילות" },
+                        { value: "repair", label: "בתיקון" },
+                        { value: "broken", label: "לא כשיר" },
+                        { value: "missing", label: "חסר" },
+                      ]}
+                      className="subitem-status-select"
+                    />
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm(`האם אתה בטוח שברצונך להסיר את "${sub.name || 'הפריט'}"?`)) {
+                      onClick={async () => {
+                        const confirmed = await showConfirm(`האם אתה בטוח שברצונך להסיר את "${sub.name || 'הפריט'}"?`, 'הסרת פריט פנימי');
+                        if (confirmed) {
                           const newSubItems = formData.subItems?.filter((_, i) => i !== index) || [];
                           const derivedStatus = calculateDerivedStatus(newSubItems);
                           setFormData({ ...formData, subItems: newSubItems, status: derivedStatus });

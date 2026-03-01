@@ -4,8 +4,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import HeaderNav from '../components/HeaderNav';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
+import { useDialog } from '../contexts/DialogContext';
 import { addNewWarehouse, updateWarehouse } from '../firebaseUtils';
 import type { Warehouse } from '../types';
+import CustomSelect from '../components/CustomSelect';
 import '../components/Form.css';
 
 type FormData = {
@@ -21,6 +23,7 @@ export default function WarehouseFormPage() {
   const isEdit = Boolean(warehouseId);
   const navigate = useNavigate();
   const { isOffline } = useOffline();
+  const { showAlert } = useDialog();
   useEffect(() => { if (isOffline) navigate(-1); }, [isOffline, navigate]);
 
   const { warehouses, groups, isLoading, currentUser } = useDatabase();
@@ -70,25 +73,25 @@ export default function WarehouseFormPage() {
     const categories = toCategoriesArray(form.categoriesText);
 
     if (!name) {
-      alert('שם מחסן לא יכול להיות ריק.');
+      await showAlert('שם מחסן לא יכול להיות ריק.', 'שגיאה');
       return;
     }
 
     if (!form.groupId && !form.isDemo) {
-      alert('חובה לבחור קבוצה למחסן.');
+      await showAlert('חובה לבחור קבוצה למחסן.', 'שגיאה');
       return;
     }
 
     if (isEdit && warehouseId) {
       const ok = await updateWarehouse(warehouseId, { name, categories, groupId: form.groupId, isDemo: form.isDemo });
       if (ok) {
-        alert('המחסן עודכן בהצלחה');
+        await showAlert('המחסן עודכן בהצלחה');
         navigate(`/warehouses/${warehouseId}`);
       }
     } else {
       const id = await addNewWarehouse({ name, categories, groupId: form.groupId, isDemo: form.isDemo });
       if (id) {
-        alert('המחסן נוצר בהצלחה');
+        await showAlert('המחסן נוצר בהצלחה');
         navigate(`/warehouses/${id}`);
       }
     }
@@ -119,21 +122,14 @@ export default function WarehouseFormPage() {
           {!form.isDemo && (
             <div className="form-group">
               <label htmlFor="groupId">שיוך לקבוצה (חובה)</label>
-              <select
-                id="groupId"
+              <CustomSelect
                 value={form.groupId}
-                onChange={handleChange}
-                required={!form.isDemo}
-              >
-                <option value="" disabled>בחר קבוצה...</option>
-                {groups
+                onChange={(val) => setForm(prev => ({ ...prev, groupId: val }))}
+                options={groups
                   .filter(group => group.members.includes(currentUser?.uid || ''))
-                  .map(group => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-              </select>
+                  .map(group => ({ value: group.id, label: group.name }))}
+                placeholder="בחר קבוצה..."
+              />
             </div>
           )}
 

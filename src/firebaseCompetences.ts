@@ -36,8 +36,6 @@ export const updateCompetence = async (id: string, updates: Partial<Competence>)
  * מוחק גם את הכשירות וגם את כל הרישומים המשויכים אליה (CompetenceRecords).
  */
 export const deleteCompetence = async (id: string) => {
-    if (!confirm('האם אתה בטוח שברצונך למחוק כשירות זו לחלוטין? פעולה זו אינה הפיכה.')) return false;
-
     try {
         const batch = writeBatch(db);
 

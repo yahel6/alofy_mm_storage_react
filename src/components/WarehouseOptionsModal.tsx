@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { deleteWarehouseAndContents } from '../firebaseUtils';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
+import { useDialog } from '../contexts/DialogContext';
 import type { Warehouse } from '../types';
 import './Modal.css';
 
@@ -24,6 +25,7 @@ const WarehouseOptionsModal: React.FC<WarehouseOptionsModalProps> = ({ warehouse
   const navigate = useNavigate();
   const { equipment } = useDatabase();
   const { isOffline } = useOffline();
+  const { showAlert, showConfirm } = useDialog();
 
   const handleEdit = () => {
     onClose();
@@ -31,11 +33,16 @@ const WarehouseOptionsModal: React.FC<WarehouseOptionsModalProps> = ({ warehouse
   };
 
   const handleDelete = async () => {
-    // הפונקציה הזו מכילה את ה-confirm בפנים
+    const confirmed = await showConfirm(
+      `האם אתה בטוח שברצונך למחוק את המחסן "${warehouse.name}"?\n\nאזהרה: פעולה זו תמחק גם את כל הפריטים המשויכים למחסן זה.\nאין דרך לשחזר פעולה זו.`,
+      'מחיקת מחסן'
+    );
+    if (!confirmed) return;
+
     const success = await deleteWarehouseAndContents(warehouse, equipment);
     onClose();
     if (success) {
-      alert(`המחסן "${warehouse.name}" וכל תכולתו נמחקו.`);
+      await showAlert(`המחסן "${warehouse.name}" וכל תכולתו נמחקו.`);
       navigate('/warehouses'); // חזרה לרשימת המחסנים
     }
   };

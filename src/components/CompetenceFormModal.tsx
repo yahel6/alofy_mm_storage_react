@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { createCompetence } from '../firebaseCompetences';
+import CustomSelect from './CustomSelect';
 import '../pages/CompetencesPage.css'; // We can reuse some styles
 import './CompetenceFormModal.css'; // New button styles
 
@@ -130,24 +131,12 @@ const CompetenceFormModal: React.FC<Props> = ({ isOpen, onClose, groupId }) => {
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label>קבוצה</label>
-                        <select
+                        <CustomSelect
                             value={selectedGroupId}
-                            onChange={(e) => setSelectedGroupId(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '10px',
-                                background: 'var(--input-bg-color)',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '8px',
-                                color: 'white'
-                            }}
-                            required
-                        >
-                            <option value="" disabled>-- בחר קבוצה --</option>
-                            {userGroups.map(g => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                        </select>
+                            onChange={setSelectedGroupId}
+                            options={userGroups.map(g => ({ value: g.id, label: g.name }))}
+                            placeholder="-- בחר קבוצה --"
+                        />
                     </div>
 
                     <div className="form-group">

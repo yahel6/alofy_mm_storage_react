@@ -3,7 +3,9 @@ import { useParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { useSelection } from '../contexts/SelectionContext';
+import { useDialog } from '../contexts/DialogContext';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import EquipmentItemRow from '../components/EquipmentItemRow';
 import StatusModal from '../components/StatusModal';
 import { bulkUpdateStatus, bulkUpdateCategory } from '../firebaseUtils';
@@ -33,6 +35,7 @@ function FilteredEquipmentPage() {
   const { equipment, isLoading, currentUser } = useDatabase();
   const { isOffline } = useOffline();
   const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection, clearSelection } = useSelection();
+  const { showAlert } = useDialog();
 
   const isSelectionMode = isSelectionModeActive(scopeId);
   const selectedItemIds = getSelectedItems(scopeId);
@@ -73,7 +76,7 @@ function FilteredEquipmentPage() {
     }
 
     if (success) {
-      alert('הפעולה בוצעה בהצלחה');
+      await showAlert('הפעולה בוצעה בהצלחה');
       clearSelection(scopeId);
       globalToggleSelectionMode(scopeId);
       setBulkAction(null);
@@ -140,13 +143,19 @@ function FilteredEquipmentPage() {
             <h3>{bulkAction === 'status' ? 'שינוי סטטוס' : 'שינוי קטגוריה'}</h3>
             <div style={{ margin: '20px 0' }}>
               {bulkAction === 'status' ? (
-                <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
-                  <option value="">בחר סטטוס...</option>
-                  <option value="available">זמין</option>
-                  <option value="broken">תקול</option>
-                  <option value="repair">בתיקון</option>
-                  <option value="charging">בטעינה</option>
-                </select>
+                <CustomSelect
+                  value={tempSelection}
+                  onChange={setTempSelection}
+                  options={[
+                    { value: "available", label: "זמין" },
+                    { value: "broken", label: "תקול" },
+                    { value: "repair", label: "בתיקון" },
+                    { value: "charging", label: "בטעינה" },
+                    { value: "missing", label: "חסר" },
+                    { value: "loaned", label: "בפעילות" },
+                  ]}
+                  placeholder="בחר סטטוס..."
+                />
               ) : (
                 <input
                   type="text"

@@ -4,7 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { updateCompetence, deleteCompetence } from '../firebaseCompetences';
+import { useDialog } from '../contexts/DialogContext';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import './CompetencesPage.css';
 
 const EditCompetencePage: React.FC = () => {
@@ -12,6 +14,7 @@ const EditCompetencePage: React.FC = () => {
     const { competenceId } = useParams<{ competenceId: string }>();
     const { users, groups, competences, currentUser, isLoading } = useDatabase();
     const { isOffline } = useOffline();
+    const { showConfirm } = useDialog();
 
     // Redirect offline users
     useEffect(() => { if (isOffline) navigate('/competences'); }, [isOffline, navigate]);
@@ -99,6 +102,8 @@ const EditCompetencePage: React.FC = () => {
 
     const handleDelete = async () => {
         if (!competenceId) return;
+        const confirmed = await showConfirm('האם אתה בטוח שברצונך למחוק כשירות זו?', 'מחיקת כשירות');
+        if (!confirmed) return;
         setIsDeleting(true);
         const success = await deleteCompetence(competenceId);
         setIsDeleting(false);
@@ -132,17 +137,13 @@ const EditCompetencePage: React.FC = () => {
                     {/* Group Selector */}
                     <div className="form-group">
                         <label>קבוצה שייכת</label>
-                        <select
+                        <CustomSelect
                             value={selectedGroupId}
-                            onChange={(e) => handleGroupChange(e.target.value)}
+                            onChange={(val) => handleGroupChange(val)}
                             className="group-selector"
-                            required
-                        >
-                            <option value="" disabled>-- בחר קבוצה --</option>
-                            {userGroups.map(g => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                        </select>
+                            options={userGroups.map(g => ({ value: g.id, label: g.name }))}
+                            placeholder="-- בחר קבוצה --"
+                        />
                     </div>
 
                     {/* Name */}

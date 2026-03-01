@@ -4,6 +4,7 @@ import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { updateUserProfile, requestToJoinGroup } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import '../components/Form.css';
 
 const ProfilePage: React.FC = () => {
@@ -89,28 +90,17 @@ const ProfilePage: React.FC = () => {
                     {groups && groups.filter(g => g.members.includes(currentUser?.uid || '')).length > 0 && (
                         <div className="form-group" style={{ marginTop: '20px' }}>
                             <label htmlFor="dominantGroup">קבוצה מועדפת (דף כשירויות)</label>
-                            <select
-                                id="dominantGroup"
+                            <CustomSelect
                                 value={dominantGroupId}
-                                onChange={(e) => setDominantGroupId(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    background: 'var(--input-bg-color)',
-                                    color: 'white',
-                                    fontSize: '1em'
-                                }}
-                            >
-                                <option value="">ללא קבוצה מועדפת</option>
-                                {groups
-                                    .filter(g => g.members.includes(currentUser?.uid || ''))
-                                    .map(g => (
-                                        <option key={g.id} value={g.id}>{g.name}</option>
-                                    ))
-                                }
-                            </select>
+                                onChange={setDominantGroupId}
+                                options={[
+                                    { value: "", label: "ללא קבוצה מועדפת" },
+                                    ...groups
+                                        .filter(g => g.members.includes(currentUser?.uid || ''))
+                                        .map(g => ({ value: g.id, label: g.name }))
+                                ]}
+                                placeholder="-- בחר קבוצה מועדפת --"
+                            />
                             <small style={{ color: '#aaa', marginTop: '4px', display: 'block' }}>
                                 קבוצה זו תוצג כברירת מחדל במסך הכשירויות.
                             </small>

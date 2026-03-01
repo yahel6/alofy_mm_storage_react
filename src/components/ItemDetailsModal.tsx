@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
+import { useDialog } from '../contexts/DialogContext';
 import type { EquipmentStatus } from '../types';
 import {
     updateSubItemStatus,
@@ -41,6 +42,7 @@ const getStatusColor = (statusId: EquipmentStatus) => {
 const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, isDemoWarehouse }) => {
     const { equipment, currentUser } = useDatabase();
     const { isOffline } = useOffline();
+    const { showAlert, showConfirm } = useDialog();
 
     const isDemoReadOnly = isDemoWarehouse && currentUser?.role !== 'admin';
 
@@ -79,13 +81,14 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, is
         if (success) {
             setNewSubItemName('');
         } else {
-            alert('שגיאה בהוספת פריט פנימי');
+            await showAlert('שגיאה בהוספת פריט פנימי', 'שגיאה');
         }
         setIsAddingSubItem(false);
     };
 
     const handleDeleteSubItem = async (subItemId: string, subItemName: string) => {
-        if (!window.confirm(`האם אתה בטוח שברצונך למחוק את הפריט הפנימי "${subItemName}"?`)) return;
+        const confirmed = await showConfirm(`האם אתה בטוח שברצונך למחוק את הפריט הפנימי "${subItemName}"?`, 'מחיקת פריט פנימי');
+        if (!confirmed) return;
         await removeInternalEquipment(itemId, subItemId);
     };
 
@@ -97,7 +100,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, is
         if (success) {
             setNewCommentText('');
         } else {
-            alert('שגיאה בשליחת הערה');
+            await showAlert('שגיאה בשליחת הערה', 'שגיאה');
         }
         setIsSendingComment(false);
     };
@@ -110,7 +113,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, is
     };
 
     const handleDeleteComment = async (commentId: string) => {
-        if (!window.confirm('האם אתה בטוח שברצונך למחוק הערה זו?')) return;
+        const confirmed = await showConfirm('האם אתה בטוח שברצונך למחוק הערה זו?', 'מחיקת הערה');
+        if (!confirmed) return;
         await deleteEquipmentComment(itemId, commentId);
     };
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
+import { useDialog } from '../contexts/DialogContext';
 import {
     approveJoinRequest,
     rejectJoinRequest,
@@ -14,6 +15,7 @@ import {
     updateUserSeenRequests
 } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import '../components/Form.css';
 
 const GroupManagementPage: React.FC = () => {
@@ -23,6 +25,7 @@ const GroupManagementPage: React.FC = () => {
     const [confirmRemove, setConfirmRemove] = React.useState<{ groupId: string, memberId: string, memberName: string } | null>(null);
     const { groups, users, warehouses, allWarehouses, activities, allActivities, currentUser, isLoading } = useDatabase();
     const { isOffline } = useOffline();
+    const { showConfirm } = useDialog();
 
     if (isLoading || !currentUser) return <div className="loading-screen">טוען...</div>;
 
@@ -45,6 +48,12 @@ const GroupManagementPage: React.FC = () => {
 
 
     const handleDeleteGroup = async (groupId: string) => {
+        const confirmed = await showConfirm(
+            "האם אתה בטוח שברצונך למחוק את הקבוצה? פעולה זו תסיר את כל החברים ותנתק את הקבוצה מהמחסנים והפעילויות המשויכים אליה.",
+            "מחיקת קבוצה"
+        );
+        if (!confirmed) return;
+
         const success = await deleteGroup(groupId);
         if (success) {
             // Success handled by Firestore listener
@@ -389,19 +398,14 @@ const GroupManagementPage: React.FC = () => {
                                         <div className="link-section">
                                             <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>מחסנים מקושרים</h4>
                                             {!isOffline && (
-                                                <select
-                                                    className="form-input"
-                                                    style={{ marginBottom: '12px', background: '#222', borderColor: '#444', color: 'var(--text-secondary)' }}
-                                                    onChange={(e) => {
-                                                        if (e.target.value) associateEntityWithGroup('warehouses', e.target.value, group.id);
-                                                    }}
+                                                <CustomSelect
                                                     value=""
-                                                >
-                                                    <option value="">הוסף מחסן לקבוצה...</option>
-                                                    {allWarehouses.filter(w => w.groupId !== group.id).map(w => (
-                                                        <option key={w.id} value={w.id}>{w.name} {w.groupId ? '(משויך לאחר)' : ''}</option>
-                                                    ))}
-                                                </select>
+                                                    onChange={(val: string) => {
+                                                        if (val) associateEntityWithGroup('warehouses', val, group.id);
+                                                    }}
+                                                    options={allWarehouses.filter(w => w.groupId !== group.id).map(w => ({ value: w.id, label: `${w.name} ${w.groupId ? '(משויך לאחר)' : ''}` }))}
+                                                    placeholder="הוסף מחסן לקבוצה..."
+                                                />
                                             )}
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                                 {warehouses.filter(w => w.groupId === group.id).map(w => (
@@ -433,19 +437,14 @@ const GroupManagementPage: React.FC = () => {
                                         <div className="link-section">
                                             <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>פעילויות מקושרות</h4>
                                             {!isOffline && (
-                                                <select
-                                                    className="form-input"
-                                                    style={{ marginBottom: '12px', background: '#222', borderColor: '#444', color: 'var(--text-secondary)' }}
-                                                    onChange={(e) => {
-                                                        if (e.target.value) associateEntityWithGroup('activities', e.target.value, group.id);
-                                                    }}
+                                                <CustomSelect
                                                     value=""
-                                                >
-                                                    <option value="">הוסף פעילות לקבוצה...</option>
-                                                    {allActivities.filter(a => a.groupId !== group.id).map(a => (
-                                                        <option key={a.id} value={a.id}>{a.name} {a.groupId ? '(משויך לאחר)' : ''}</option>
-                                                    ))}
-                                                </select>
+                                                    onChange={(val: string) => {
+                                                        if (val) associateEntityWithGroup('activities', val, group.id);
+                                                    }}
+                                                    options={allActivities.filter(a => a.groupId !== group.id).map(a => ({ value: a.id, label: `${a.name} ${a.groupId ? '(משויך לאחר)' : ''}` }))}
+                                                    placeholder="הוסף פעילות לקבוצה..."
+                                                />
                                             )}
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                                 {activities.filter(a => a.groupId === group.id).map(a => (

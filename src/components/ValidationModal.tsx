@@ -2,6 +2,7 @@ import React from 'react';
 import type { EquipmentItem } from '../types';
 import { validateEquipmentItem } from '../firebaseUtils';
 import { useValidation } from '../contexts/ValidationContext';
+import { useDialog } from '../contexts/DialogContext';
 import './Modal.css';
 
 interface ValidationModalProps {
@@ -12,6 +13,7 @@ interface ValidationModalProps {
 
 const ValidationModal: React.FC<ValidationModalProps> = ({ item, scopeId, onClose }) => {
     const { verifyItem } = useValidation();
+    const { showAlert } = useDialog();
 
     const handleConfirm = async () => {
         try {
@@ -20,7 +22,7 @@ const ValidationModal: React.FC<ValidationModalProps> = ({ item, scopeId, onClos
             onClose();
         } catch (error) {
             console.error("Error validating item:", error);
-            alert("שגיאה באימות הפריט");
+            await showAlert("שגיאה באימות הפריט");
         }
     };
 

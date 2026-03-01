@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
+import { useDialog } from '../contexts/DialogContext';
 import { createGroupDetailed } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import '../components/Form.css';
@@ -11,6 +12,7 @@ const GroupFormPage: React.FC = () => {
     const { users, allWarehouses, allActivities, currentUser, isLoading } = useDatabase();
     const { isOffline } = useOffline();
     useEffect(() => { if (isOffline) navigate(-1); }, [isOffline, navigate]);
+    const { showAlert } = useDialog();
 
     const [name, setName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -23,7 +25,7 @@ const GroupFormPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) {
-            alert('נא להזין שם לקבוצה');
+            await showAlert('נא להזין שם לקבוצה');
             return;
         }
 
@@ -39,7 +41,7 @@ const GroupFormPage: React.FC = () => {
         if (groupId) {
             navigate('/groups');
         } else {
-            alert('שגיאה ביצירת הקבוצה. נא לנסות שוב.');
+            await showAlert('שגיאה ביצירת הקבוצה. נא לנסות שוב.');
         }
         setIsSubmitting(false);
     };

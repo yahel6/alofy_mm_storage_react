@@ -5,7 +5,9 @@ import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { useValidation } from '../contexts/ValidationContext';
 import { useSelection } from '../contexts/SelectionContext';
+import { useDialog } from '../contexts/DialogContext';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import EquipmentItemRow from '../components/EquipmentItemRow';
 import ActivityOptionsModal from '../components/ActivityOptionsModal';
 import ResolveGapModal from '../components/ResolveGapModal';
@@ -20,9 +22,10 @@ import {
   bulkValidateItems,
   bulkUpdateCategory,
   bulkUpdateStatus,
-  updateGroupStatusByQuantity
+  updateGroupStatusByQuantity,
+  updateActivitySimpleEquipment
 } from '../firebaseUtils';
-import type { EquipmentItem } from '../types';
+import type { EquipmentItem, SimpleEquipmentItem } from '../types';
 import QuantityModal from '../components/QuantityModal';
 import './ActivityDetailsPage.css';
 
@@ -37,6 +40,7 @@ function ActivityDetailsPage() {
   const { isOffline } = useOffline();
   const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
   const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection: globalToggleItemSelection, clearSelection } = useSelection();
+  const { showAlert, showConfirm } = useDialog();
 
   const isValidationMode = isSessionActive(scopeId);
   const sessionVerifiedIds = getSessionVerifiedItems(scopeId);
@@ -78,9 +82,10 @@ function ActivityDetailsPage() {
       await bulkValidateItems(ids);
       ids.forEach(id => verifyItem(scopeId, id));
     } else {
-      if (window.confirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`)) {
+      const confirmed = await showConfirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`, 'אימות קבוצתי');
+      if (confirmed) {
         await bulkValidateItems(ids);
-        alert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
+        await showAlert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
       }
     }
 
@@ -95,7 +100,7 @@ function ActivityDetailsPage() {
 
     if (quantity < totalQuantity) {
       await updateGroupStatusByQuantity(splitCandidateGroup, quantity, tempSelection as any);
-      alert('הפיצול והעדכון בוצעו בהצלחה');
+      await showAlert('הפיצול והעדכון בוצעו בהצלחה');
     } else {
       await performActionOnIds(splitCandidateGroup.map(i => i.id));
     }
@@ -120,13 +125,13 @@ function ActivityDetailsPage() {
     }
 
     if (success) {
-      alert('הפעולה בוצעה בהצלחה');
+      await showAlert('הפעולה בוצעה בהצלחה');
       clearSelection(scopeId);
       globalToggleSelectionMode(scopeId); // Exit mode
       setBulkAction(null);
       setTempSelection('');
     } else {
-      alert('אירעה שגיאה בביצוע הפעולה');
+      await showAlert('אירעה שגיאה בביצוע הפעולה', 'שגיאה');
     }
   };
 
@@ -191,9 +196,8 @@ function ActivityDetailsPage() {
     const applyFilters = (items: EquipmentItem[]) => {
       let filtered = items;
 
-      if (isValidationMode) {
-        filtered = filtered.filter(item => !sessionVerifiedIds.has(item.id));
-      }
+      // No longer filtering out verified items in validation mode here,
+      // instead we will handle the display logic in the render functions.
 
       if (activeFilter !== 'all') {
         const today = new Date();
@@ -258,14 +262,14 @@ function ActivityDetailsPage() {
 
   const handleCheckout = async () => {
     if (finalMissingItems.length > 0) {
-      alert("לא ניתן לבצע Check-out. קיימים פערים בציוד.");
+      await showAlert("לא ניתן לבצע Check-out. קיימים פערים בציוד.", "שגיאה");
       return;
     }
     const itemsToCheckout = finalAssignedItems.filter(
       item => item.status === 'available' || item.status === 'charging'
     );
     if (itemsToCheckout.length === 0) {
-      alert("כל הציוד לפעילות זו כבר נמצא בחוץ.");
+      await showAlert("כל הציוד לפעילות זו כבר נמצא בחוץ.", "פעולה בוטלה");
       return;
     }
     await checkoutActivityEquipment(activity, itemsToCheckout);
@@ -275,7 +279,7 @@ function ActivityDetailsPage() {
       item => item.status === 'loaned' && item.loanedToUserId === activity.managerUserId
     );
     if (itemsToCheckin.length === 0) {
-      alert("לא נמצא ציוד להחזרה.");
+      await showAlert("לא נמצא ציוד להחזרה.", "פעולה בוטלה");
       return;
     }
     await checkinActivityEquipment(activity, itemsToCheckin);
@@ -325,8 +329,27 @@ function ActivityDetailsPage() {
     }
   };
 
-  const totalAssigned = finalAssignedItems.length;
+  const handleToggleSimpleVerify = async (itemId: string) => {
+    if (!activity || !activity.simpleEquipment) return;
+    const newSimpleItems = activity.simpleEquipment.map(item =>
+      item.id === itemId ? { ...item, isVerified: !item.isVerified } : item
+    );
+    await updateActivitySimpleEquipment(activity.id, newSimpleItems);
+  };
+
+  const handleResetSimpleVerify = async () => {
+    if (!activity || !activity.simpleEquipment) return;
+    const confirmed = await showConfirm('האם לאפס את כל הווידוא שעשית ברשימה זו?', 'איפוס ווידוא');
+    if (confirmed) {
+      const newSimpleItems = activity.simpleEquipment.map(item => ({ ...item, isVerified: false }));
+      await updateActivitySimpleEquipment(activity.id, newSimpleItems);
+    }
+  };
+
+
   const totalItems = activity.equipmentRequiredIds.length + activity.equipmentMissingIds.length;
+  const hasInventory = totalItems > 0;
+  const hasSimple = !!(activity.simpleEquipment && activity.simpleEquipment.length > 0);
 
   // Helper to group by name and status for aggregated view
   const groupByName = (items: EquipmentItem[]) => {
@@ -358,23 +381,31 @@ function ActivityDetailsPage() {
     if (bulkAction === 'category') {
       title = 'עדכון קטגוריה';
       content = (
-        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
-          <option value="">בחר קטגוריה...</option>
-          {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-          <option value="">(ללא קטגוריה)</option>
-        </select>
+        <CustomSelect
+          value={tempSelection}
+          onChange={setTempSelection}
+          options={[
+            { value: "", label: "(ללא קטגוריה)" },
+            ...availableCategories.map(c => ({ value: c, label: c }))
+          ]}
+          placeholder="בחר קטגוריה..."
+        />
       );
     } else if (bulkAction === 'status') {
       title = 'שינוי סטטוס';
       content = (
-        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
-          <option value="">בחר סטטוס...</option>
-          <option value="available">זמין</option>
-          <option value="charging">בטעינה</option>
-          <option value="broken">תקול</option>
-          <option value="repair">בתיקון</option>
-          <option value="loaned">מושאל</option>
-        </select>
+        <CustomSelect
+          value={tempSelection}
+          onChange={setTempSelection}
+          options={[
+            { value: "available", label: "זמין" },
+            { value: "charging", label: "בטעינה" },
+            { value: "broken", label: "תקול" },
+            { value: "repair", label: "בתיקון" },
+            { value: "loaned", label: "מושאל" },
+          ]}
+          placeholder="בחר סטטוס..."
+        />
       );
     }
 
@@ -418,6 +449,7 @@ function ActivityDetailsPage() {
           const first = group.items[0];
           const allIds = group.items.map(i => i.id);
           const isSelected = allIds.every(id => selectedItemIds.has(id));
+          const isVerified = isValidationMode && allIds.every(id => sessionVerifiedIds.has(id));
 
           const isMissing = finalMissingItems.some(i => i.id === first.id);
           const onClick = isMissing ? () => handleGapItemClick(group.items) : () => handleItemClick(group.items);
@@ -434,6 +466,12 @@ function ActivityDetailsPage() {
                 borderRight: idx > 0 ? (isMissingGroup ? '3px solid #ff4444' : '3px solid rgba(var(--action-color-rgb), 0.3)') : 'none',
                 marginRight: idx > 0 ? '4px' : '0',
                 paddingRight: idx > 0 ? '4px' : '0',
+                position: 'relative',
+                transition: 'all 0.2s',
+                opacity: isVerified ? 0.6 : 1,
+                background: isVerified ? 'rgba(52, 199, 89, 0.05)' : 'transparent',
+                borderRadius: '8px',
+                overflow: 'hidden'
               }}
             >
               <EquipmentItemRow
@@ -461,6 +499,21 @@ function ActivityDetailsPage() {
                   }
                 }}
               />
+              {isVerified && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '16px',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--status-green)',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  pointerEvents: 'none',
+                  zIndex: 2
+                }}>
+                  ✅
+                </div>
+              )}
             </div>
           );
         })}
@@ -517,68 +570,83 @@ function ActivityDetailsPage() {
             />
           </div>
 
-          <div className="actions-row">
-            {availableCategories.length > 0 && (
-              <select
+          <div className="actions-row" style={{ flexWrap: 'wrap', gap: '8px' }}>
+            {hasInventory && availableCategories.length > 0 && (
+              <CustomSelect
                 value={categoryFilter}
-                onChange={e => setCategoryFilter(e.target.value)}
-              >
-                <option value="">קטגוריה</option>
-                {availableCategories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+                onChange={setCategoryFilter}
+                options={[
+                  { value: "", label: "הכל" },
+                  ...availableCategories.map(cat => ({ value: cat, label: cat }))
+                ]}
+                placeholder="קטגוריה"
+              />
             )}
 
-            <button
-              onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
-              style={{
-                border: isGroupedByCategory ? '2px solid var(--action-color)' : undefined,
-                background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
-                color: isGroupedByCategory ? 'var(--action-color)' : undefined,
-              }}
-            >
-              {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
-            </button>
+            {hasInventory && (
+              <button
+                onClick={() => setIsGroupedByCategory(!isGroupedByCategory)}
+                className="control-btn"
+                style={{
+                  border: isGroupedByCategory ? '2px solid var(--action-color)' : undefined,
+                  background: isGroupedByCategory ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
+                  color: isGroupedByCategory ? 'var(--action-color)' : undefined,
+                }}
+              >
+                {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
+              </button>
+            )}
 
-            {/* Selection mode and validation - hidden offline */}
-            {!isOffline && (
-              <>
-                <button
-                  onClick={toggleSelectionMode}
-                  style={{
-                    border: isSelectionMode ? '2px solid var(--action-color)' : undefined,
-                    background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
-                    color: isSelectionMode ? 'var(--action-color)' : undefined,
-                  }}
-                >
-                  {isSelectionMode ? 'בטל' : 'בחר'}
-                </button>
-
-                {!isValidationMode && (
-                  <button onClick={() => startSession(scopeId)}>
-                    ווידוא
-                  </button>
-                )}
-              </>
+            {!isOffline && hasInventory && (
+              <button
+                onClick={toggleSelectionMode}
+                className="control-btn"
+                style={{
+                  border: isSelectionMode ? '2px solid var(--action-color)' : undefined,
+                  background: isSelectionMode ? 'rgba(var(--action-color-rgb), 0.1)' : undefined,
+                  color: isSelectionMode ? 'var(--action-color)' : undefined,
+                }}
+              >
+                {isSelectionMode ? 'בטל' : 'בחר'}
+              </button>
             )}
           </div>
+
+          {!isOffline && (
+            <div className="verification-row" style={{ display: 'flex', gap: '8px', width: '100%' }}>
+              {!isValidationMode && (
+                <button
+                  onClick={() => startSession(scopeId)}
+                  className="premium-btn-primary"
+                >
+                  <span style={{ fontSize: '14px' }}>🕵️</span>
+                  ווידוא
+                </button>
+              )}
+              {hasSimple && (
+                <button
+                  onClick={handleResetSimpleVerify}
+                  className="premium-btn-secondary"
+                >
+                  <span>🔄</span>
+                  רענון ווידוא
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {!isValidationMode && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
+      {!isValidationMode && hasInventory && <FilterChips onFilterChange={(filterId) => setActiveFilter(filterId as FilterType)} />}
 
-      <div className="details-card">
-        {/* ... (card title) ... */}
+      <div className="details-card" style={{ display: (hasInventory || !hasSimple) ? 'block' : 'none' }}>
+        {/* Inventory Section Header */}
         <h3 className="card-title">
-          <span>{`סטטוס פעילות (${totalAssigned} / ${totalItems})`}</span>
-          {/* Edit button only when online */}
+          <span>{`רשימת ציוד- ${totalItems} פריטים`}</span>
           {!isOffline && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span className="card-title-action" onClick={handleEditEquipment}>
-                ערוך
-              </span>
-            </div>
+            <span className="card-title-action" onClick={handleEditEquipment}>
+              הוסף ציוד
+            </span>
           )}
         </h3>
         <div className="equipment-scroll-pane">
@@ -630,6 +698,75 @@ function ActivityDetailsPage() {
           )}
         </div>
       </div>
+
+      {hasSimple && (
+        <div className="details-card">
+          <h3 className="card-title">
+            <span>{`רשימת ציוד- ${activity.simpleEquipment?.length || 0} פריטים`}</span>
+            {!isOffline && (
+              <span className="card-title-action" onClick={handleEditEquipment}>
+                הוסף ציוד
+              </span>
+            )}
+          </h3>
+          <div className="equipment-scroll-pane" style={{ padding: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {activity.simpleEquipment!
+                .filter(item => {
+                  if (!searchQuery.trim()) return true;
+                  return item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                })
+                .map((item: SimpleEquipmentItem) => (
+                  <div
+                    key={item.id}
+                    onClick={isValidationMode ? () => handleToggleSimpleVerify(item.id) : undefined}
+                    className={`simple-item-row ${item.isVerified ? 'verified' : ''} ${isValidationMode ? 'clickable' : ''}`}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {isValidationMode && (
+                        <div style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '6px',
+                          border: `2px solid ${item.isVerified ? 'var(--status-green)' : '#555'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: item.isVerified ? 'var(--status-green)' : 'transparent',
+                          color: 'white',
+                          fontSize: '14px',
+                          transition: 'all 0.2s'
+                        }}>
+                          {item.isVerified && '✓'}
+                        </div>
+                      )}
+                      <span style={{
+                        fontSize: '16px',
+                        fontWeight: item.isVerified ? '500' : 'bold',
+                        color: item.isVerified ? 'var(--status-green)' : 'var(--text-primary)',
+                        textDecoration: item.isVerified ? 'line-through' : 'none',
+                      }}>
+                        {item.name}
+                      </span>
+                    </div>
+                    {!isValidationMode && item.isVerified && (
+                      <span style={{
+                        color: 'var(--status-green)',
+                        fontSize: '11px',
+                        background: 'rgba(52, 199, 89, 0.1)',
+                        padding: '2px 8px',
+                        borderRadius: '8px',
+                        fontWeight: 'bold'
+                      }}>
+                        אומת
+                      </span>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {isSelectionMode && (
         <style>{`
@@ -686,9 +823,10 @@ function ActivityDetailsPage() {
           onCancel={() => setSplitCandidateGroup(null)}
           onConfirm={handleSplitConfirm}
           maxQuantity={splitCandidateGroup.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}
-          title={`פיצול פריט: ${splitCandidateGroup[0].name}`}
+          title={`피צול פריט: ${splitCandidateGroup[0].name}`}
         />
       )}
+
       {/* Checkout/Checkin buttons - hidden offline */}
       {!isValidationMode && !isOffline && (
         <div className="action-buttons">

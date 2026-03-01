@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
-import { addNewActivity, updateActivity } from '../firebaseUtils'; //
+import { useDialog } from '../contexts/DialogContext';
+import { addNewActivity, updateActivity } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import '../components/Form.css'; // שימוש חוזר בעיצוב הטופס
 import type { Activity } from '../types';
 
@@ -17,6 +19,7 @@ function ActivityFormPage() {
   const navigate = useNavigate();
   const { activities, users, isLoading, groups, currentUser } = useDatabase();
   const { isOffline } = useOffline();
+  const { showAlert } = useDialog();
 
   useEffect(() => { if (isOffline) navigate(-1); }, [isOffline, navigate]);
 
@@ -58,26 +61,30 @@ function ActivityFormPage() {
 
     // ולידציה בסיסית
     if (!formData.name || !formData.managerUserId || !formData.date || !formData.groupId) {
-      alert("אנא מלא את כל השדות, כולל שיוך לקבוצה.");
+      await showAlert("אנא מלא את כל השדות, כולל שיוך לקבוצה.", "שגיאה בטופס");
       return;
     }
 
-    if (isEditMode && activityId) {
-      // --- מצב עריכה ---
-      const success = await updateActivity(activityId, formData);
-      if (success) {
-        navigate(`/activities/${activityId}`); // חזור לפרטי הפעילות
+    try {
+      if (isEditMode && activityId) {
+        // --- מצב עריכה ---
+        const success = await updateActivity(activityId, formData);
+        if (success) {
+          navigate(`/activities/${activityId}`); // חזור לפרטי הפעילות
+        } else {
+          await showAlert("שגיאה בעדכון הפעילות.", "שגיאה");
+        }
       } else {
-        alert("שגיאה בעדכון הפעילות.");
+        // --- מצב הוספה ---
+        const newId = await addNewActivity(formData);
+        if (newId) {
+          navigate('/activities'); // חזור לרשימת הפעילויות
+        } else {
+          await showAlert("שגיאה בהוספת הפעילות.", "שגיאה");
+        }
       }
-    } else {
-      // --- מצב הוספה ---
-      const newId = await addNewActivity(formData);
-      if (newId) {
-        navigate('/activities'); // חזור לרשימת הפעילויות
-      } else {
-        alert("שגיאה בהוספת הפעילות.");
-      }
+    } catch (error: any) {
+      await showAlert(error.message || "אירעה שגיאה", "שגיאה");
     }
   };
 
@@ -106,34 +113,30 @@ function ActivityFormPage() {
 
           <div className="form-group">
             <label htmlFor="managerUserId">אחראי משימה</label>
-            <select
-              id="managerUserId"
-              value={formData.managerUserId}
-              onChange={handleChange}
-              required
-            >
-              <option value="">בחר אחראי...</option>
-              {users.map(u => (
-                <option key={u.uid} value={u.uid}>{u.displayName}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={formData.managerUserId || ''}
+              onChange={(val) => handleChange({ target: { id: 'managerUserId', value: val } } as any)}
+              options={[
+                { value: "", label: "בחר אחראי..." },
+                ...users.map(u => ({ value: u.uid, label: u.displayName || 'ללא שם' }))
+              ]}
+              placeholder="בחר אחראי..."
+            />
           </div>
 
           <div className="form-group">
             <label htmlFor="groupId">שיוך לקבוצה</label>
-            <select
-              id="groupId"
-              value={formData.groupId}
-              onChange={handleChange}
-              required
-            >
-              <option value="">בחר קבוצה...</option>
-              {groups
-                .filter(g => g.members.includes(currentUser?.uid || ''))
-                .map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-            </select>
+            <CustomSelect
+              value={formData.groupId || ''}
+              onChange={(val) => handleChange({ target: { id: 'groupId', value: val } } as any)}
+              options={[
+                { value: "", label: "בחר קבוצה..." },
+                ...groups
+                  .filter(g => g.members.includes(currentUser?.uid || ''))
+                  .map(g => ({ value: g.id || '', label: g.name }))
+              ]}
+              placeholder="בחר קבוצה..."
+            />
           </div>
 
 

@@ -1,0 +1,95 @@
+/* DialogContext.css */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.dialog-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.dialog-modal {
+    background: var(--card-bg-color);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    padding: 24px;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    animation: slideUp 0.3s forwards;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+@keyframes slideUp {
+    to {
+        transform: translateY(0);
+    }
+}
+
+.dialog-title {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.dialog-message {
+    margin: 0;
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.dialog-btn {
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    font-family: inherit;
+}
+
+.dialog-btn-cancel {
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.dialog-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dialog-btn-confirm {
+    background: var(--action-color);
+    color: white;
+}
+
+.dialog-btn-confirm:hover {
+    filter: brightness(1.1);
+    transform: scale(0.98);
+}

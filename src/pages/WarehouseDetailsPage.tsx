@@ -4,7 +4,9 @@ import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { useValidation } from '../contexts/ValidationContext';
 import { useSelection } from '../contexts/SelectionContext';
+import { useDialog } from '../contexts/DialogContext';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import EquipmentItemRow from '../components/EquipmentItemRow';
 import FilterChips from '../components/FilterChips';
 import StatusModal from '../components/StatusModal';
@@ -37,6 +39,7 @@ function WarehouseDetailsPage() {
   const isUserAdmin = currentUser?.role === 'admin';
   const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
   const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection: globalToggleItemSelection, clearSelection } = useSelection();
+  const { showAlert, showConfirm } = useDialog();
 
   const isValidationMode = isSessionActive(scopeId);
   const sessionVerifiedIds = getSessionVerifiedItems(scopeId);
@@ -116,13 +119,13 @@ function WarehouseDetailsPage() {
     }
 
     if (success) {
-      alert('הפעולה בוצעה בהצלחה');
+      await showAlert('הפעולה בוצעה בהצלחה');
       clearSelection(scopeId);
       globalToggleSelectionMode(scopeId); // Exit mode
       setBulkAction(null);
       setTempSelection('');
     } else {
-      alert('אירעה שגיאה בביצוע הפעולה');
+      await showAlert('אירעה שגיאה בביצוע הפעולה', 'שגיאה');
     }
   };
 
@@ -151,9 +154,10 @@ function WarehouseDetailsPage() {
       await bulkValidateItems(ids);
       ids.forEach(id => verifyItem(scopeId, id));
     } else {
-      if (window.confirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`)) {
+      const confirmed = await showConfirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`, 'אימות קבוצתי');
+      if (confirmed) {
         await bulkValidateItems(ids);
-        alert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
+        await showAlert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
       }
     }
 
@@ -354,48 +358,62 @@ function WarehouseDetailsPage() {
     if (bulkAction === 'category') {
       title = 'עדכון קטגוריה';
       content = (
-        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
-          <option value="">בחר קטגוריה...</option>
-          {warehouse.categories?.map(c => <option key={c} value={c}>{c}</option>)}
-          <option value="">(ללא קטגוריה)</option>
-        </select>
+        <CustomSelect
+          value={tempSelection}
+          onChange={setTempSelection}
+          options={[
+            { value: "", label: "(ללא קטגוריה)" },
+            ...(warehouse.categories || []).map(c => ({ value: c, label: c }))
+          ]}
+          placeholder="בחר קטגוריה..."
+        />
       );
     } else if (bulkAction === 'status') {
       title = 'שינוי סטטוס';
       content = (
-        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
-          <option value="">בחר סטטוס...</option>
-          <option value="available">כשיר</option>
-          <option value="charging">בטעינה</option>
-          <option value="repair">בתיקון</option>
-          <option value="broken">לא כשיר</option>
-          <option value="missing">חסר</option>
-          <option value="loaned">בפעילות</option>
-        </select>
+        <CustomSelect
+          value={tempSelection}
+          onChange={setTempSelection}
+          options={[
+            { value: "available", label: "כשיר" },
+            { value: "charging", label: "בטעינה" },
+            { value: "repair", label: "בתיקון" },
+            { value: "broken", label: "לא כשיר" },
+            { value: "missing", label: "חסר" },
+            { value: "loaned", label: "בפעילות" },
+          ]}
+          placeholder="בחר סטטוס..."
+        />
       );
     } else if (bulkAction === 'move') {
       title = 'העברה למחסן אחר';
       content = (
-        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
-          <option value="">בחר מחסן יעד...</option>
-          {otherWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-        </select>
+        <CustomSelect
+          value={tempSelection}
+          onChange={setTempSelection}
+          options={otherWarehouses.map(w => ({ value: w.id, label: w.name }))}
+          placeholder="בחר מחסן יעד..."
+        />
       );
     } else if (bulkAction === 'copy') {
       title = 'העתקה למחסן אחר (פריטים יישארו במקור)';
       content = (
-        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
-          <option value="">בחר מחסן יעד...</option>
-          {otherWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-        </select>
+        <CustomSelect
+          value={tempSelection}
+          onChange={setTempSelection}
+          options={otherWarehouses.map(w => ({ value: w.id, label: w.name }))}
+          placeholder="בחר מחסן יעד..."
+        />
       );
     } else if (bulkAction === 'activity') {
       title = 'שיוך לפעילות';
       content = (
-        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
-          <option value="">בחר פעילות...</option>
-          {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
+        <CustomSelect
+          value={tempSelection}
+          onChange={setTempSelection}
+          options={activities.map(a => ({ value: a.id, label: a.name }))}
+          placeholder="בחר פעילות..."
+        />
       );
     } else if (bulkAction === 'validationDays') {
       title = 'ימי וידוא נדרשים';
@@ -497,15 +515,15 @@ function WarehouseDetailsPage() {
 
           <div className="actions-row">
             {warehouse?.categories && warehouse.categories.length > 0 && (
-              <select
+              <CustomSelect
                 value={categoryFilter}
-                onChange={e => setCategoryFilter(e.target.value)}
-              >
-                <option value="">קטגוריה</option>
-                {warehouse.categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+                onChange={setCategoryFilter}
+                options={[
+                  { value: "", label: "הכל" },
+                  ...warehouse.categories.map(cat => ({ value: cat, label: cat }))
+                ]}
+                placeholder="קטגוריה"
+              />
             )}
 
             <button

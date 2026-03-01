@@ -3,6 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { deleteActivity } from '../firebaseUtils';
 import { useOffline } from '../contexts/OfflineContext';
+import { useDialog } from '../contexts/DialogContext';
 import type { Activity } from '../types';
 import './Modal.css';
 
@@ -22,6 +23,7 @@ const DeleteIcon = () => (
 const ActivityOptionsModal: React.FC<ActivityOptionsModalProps> = ({ activity, onClose }) => {
   const navigate = useNavigate();
   const { isOffline } = useOffline();
+  const { showConfirm, showAlert } = useDialog();
 
   const handleEdit = () => {
     onClose();
@@ -30,8 +32,15 @@ const ActivityOptionsModal: React.FC<ActivityOptionsModalProps> = ({ activity, o
 
   const handleDelete = async () => {
     onClose();
-    await deleteActivity(activity.id, activity.name);
-    navigate('/activities'); // חזרה לרשימת הפעילויות
+    const confirmed = await showConfirm(`האם אתה בטוח שברצונך למחוק את הפעילות "${activity.name}"?`, 'מחיקת פעילות');
+    if (confirmed) {
+      try {
+        await deleteActivity(activity.id);
+        navigate('/activities'); // חזרה לרשימת הפעילויות
+      } catch (error: any) {
+        await showAlert('שגיאה במחיקת הפעילות', 'שגיאה');
+      }
+    }
   };
 
   return (

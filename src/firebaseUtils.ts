@@ -1,6 +1,6 @@
 import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove, query, where, getDocs, arrayUnion } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import type { EquipmentItem, Activity, Warehouse, Group, AppUser } from './types';
+import type { EquipmentItem, Activity, Warehouse, Group, AppUser, SimpleEquipmentItem } from './types';
 
 // סוגי הסטטוסים האפשריים לפריט (לפי סדר עדיפויות חומרה)
 export type EquipmentStatus = 'broken' | 'missing' | 'repair' | 'charging' | 'loaned' | 'available';
@@ -88,19 +88,16 @@ export const updateSubItemStatus = async (itemId: string, subItemId: string, new
  * מוחק פריט ציוד ספציפי מ-Firebase
  */
 export const deleteEquipmentItem = async (itemId: string) => {
-  if (!confirm("האם אתה בטוח שברצונך למחוק את הפריט? אין דרך לשחזר פעולה זו.")) {
-    return;
-  }
-
   console.log(`מוחק את פריט ${itemId}...`);
   const itemRef = doc(db, 'equipment', itemId);
   try {
     await deleteDoc(itemRef);
     console.log("מחיקה הצליחה!");
     // TODO: להסיר את הפריט מכל הפעילויות
+    return true;
   } catch (error) {
     console.error("שגיאה במחיקת פריט:", error);
-    alert("שגיאה במחיקת הפריט.");
+    throw new Error("שגיאה במחיקת הפריט.");
   }
 };
 
@@ -167,8 +164,7 @@ export const addNewEquipment = async (itemData: Omit<EquipmentItem, 'id' | 'loan
  */
 export const addNewActivity = async (activityData: Omit<Activity, 'id' | 'equipmentRequiredIds' | 'equipmentMissingIds'>) => {
   if (!activityData.groupId) {
-    alert('חובה לבחור קבוצה לפעילות.');
-    return null;
+    throw new Error('חובה לבחור קבוצה לפעילות.');
   }
   try {
     const docRef = await addDoc(collection(db, "activities"), {
@@ -189,8 +185,7 @@ export const addNewActivity = async (activityData: Omit<Activity, 'id' | 'equipm
  */
 export const updateActivity = async (activityId: string, newData: Partial<Activity>) => {
   if (newData.groupId === "") {
-    alert('חובה לבחור קבוצה לפעילות.');
-    return false;
+    throw new Error('חובה לבחור קבוצה לפעילות.');
   }
   const activityRef = doc(db, "activities", activityId);
   try {
@@ -210,10 +205,7 @@ export const updateActivity = async (activityId: string, newData: Partial<Activi
 /**
  * מוחק פעילות
  */
-export const deleteActivity = async (activityId: string, activityName: string) => {
-  if (!confirm(`האם אתה בטוח שברצונך למחוק את הפעילות "${activityName}"?`)) {
-    return;
-  }
+export const deleteActivity = async (activityId: string) => {
   const activityRef = doc(db, "activities", activityId);
   try {
     const snap = await getDoc(activityRef);
@@ -247,7 +239,7 @@ export const deleteActivity = async (activityId: string, activityName: string) =
 /**
  * מעדכן את רשימת הציוד המשויך לפעילות
  */
-export const updateActivityEquipment = async (activityId: string, newEquipmentIds: string[], allEquipment: EquipmentItem[]) => {
+export const updateActivityEquipment = async (activityId: string, newEquipmentIds: string[], allEquipment: EquipmentItem[], simpleEquipment?: SimpleEquipmentItem[]) => {
   // לוגיקה זהה לקוד הישן
   const equipmentRequiredIds: string[] = [];
   const equipmentMissingIds: string[] = [];
@@ -274,6 +266,7 @@ export const updateActivityEquipment = async (activityId: string, newEquipmentId
     batch.update(activityRef, {
       equipmentRequiredIds: equipmentRequiredIds,
       equipmentMissingIds: equipmentMissingIds,
+      simpleEquipment: simpleEquipment || [],
       date: new Date().toISOString() // Update date
     });
 
@@ -302,11 +295,30 @@ export const updateActivityEquipment = async (activityId: string, newEquipmentId
       await checkForMerge(id);
     }
 
+    // 4. Commit batch
+    await batch.commit();
     console.log(`ציוד פעילות ענן ${activityId} עודכן בהצלחה.`);
   } catch (error) {
     console.error("שגיאה בעדכון ציוד פעילות בענן:", error);
   }
-}
+};
+
+/**
+ * מעדכן רק את הרשמ"צ הפשוט של הפעילות
+ */
+export const updateActivitySimpleEquipment = async (activityId: string, simpleItems: SimpleEquipmentItem[]) => {
+  const activityRef = doc(db, "activities", activityId);
+  try {
+    await updateDoc(activityRef, {
+      simpleEquipment: simpleItems,
+      date: new Date().toISOString()
+    });
+    return true;
+  } catch (error) {
+    console.error("Error updating simple equipment:", error);
+    return false;
+  }
+};
 
 /** יצירת מחסן חדש (עם/בלי קטגוריות) */
 export const addNewWarehouse = async (data: { name: string; categories?: string[]; groupId?: string; isDemo?: boolean }) => {
@@ -316,12 +328,10 @@ export const addNewWarehouse = async (data: { name: string; categories?: string[
   const isDemo = data.isDemo || false;
 
   if (!name) {
-    alert('שם מחסן לא יכול להיות ריק.');
-    return null;
+    throw new Error('שם מחסן לא יכול להיות ריק.');
   }
   if (!groupId && !isDemo) {
-    alert('חובה לבחור קבוצה למחסן.');
-    return null;
+    throw new Error('חובה לבחור קבוצה למחסן.');
   }
 
   try {
@@ -334,8 +344,7 @@ export const addNewWarehouse = async (data: { name: string; categories?: string[
     return ref.id;
   } catch (e) {
     console.error('שגיאה בהוספת מחסן:', e);
-    alert('אירעה שגיאה בהוספת מחסן');
-    return null;
+    throw new Error('אירעה שגיאה בהוספת מחסן');
   }
 };
 
@@ -347,24 +356,20 @@ export const updateWarehouse = async (warehouseId: string, data: { name: string;
   const isDemo = data.isDemo; // Optional to prevent overwriting if not passed
 
   if (!warehouseId) {
-    alert('שגיאה: חסר מזהה מחסן.');
-    return false;
+    throw new Error('שגיאה: חסר מזהה מחסן.');
   }
   if (!name) {
-    alert('שם מחסן לא יכול להיות ריק.');
-    return false;
+    throw new Error('שם מחסן לא יכול להיות ריק.');
   }
   if (!groupId && !isDemo) {
-    alert('חובה לבחור קבוצה למחסן.');
-    return false;
+    throw new Error('חובה לבחור קבוצה למחסן.');
   }
 
   try {
     const ref = doc(db, 'warehouses', warehouseId);
     const snap = await getDoc(ref);
     if (!snap.exists()) {
-      alert('המחסן לא נמצא.');
-      return false;
+      throw new Error('המחסן לא נמצא.');
     }
     await updateDoc(ref, {
       name,
@@ -375,8 +380,7 @@ export const updateWarehouse = async (warehouseId: string, data: { name: string;
     return true;
   } catch (e) {
     console.error('שגיאה בעדכון מחסן:', e);
-    alert('אירעה שגיאה בעדכון מחסן');
-    return false;
+    throw new Error('אירעה שגיאה בעדכון מחסן');
   }
 };
 
@@ -384,16 +388,6 @@ export const updateWarehouse = async (warehouseId: string, data: { name: string;
  * מוחק מחסן ואת כל תכולתו
  */
 export const deleteWarehouseAndContents = async (warehouse: Warehouse, equipment: EquipmentItem[]) => {
-  const confirmation = confirm(
-    `האם אתה בטוח שברצונך למחוק את המחסן "${warehouse.name}"?\n\n` +
-    `אזהרה: פעולה זו תמחק גם את *כל הפריטים* המשויכים למחסן זה.\n` +
-    `אין דרך לשחזר פעולה זו.`
-  );
-
-  if (!confirmation) {
-    return false;
-  }
-
   console.log(`מתחיל מחיקת מחסן ${warehouse.id} וכל תכולתו...`);
 
   const itemsToDelete = equipment.filter(item => item.warehouseId === warehouse.id);
@@ -420,8 +414,7 @@ export const deleteWarehouseAndContents = async (warehouse: Warehouse, equipment
 
   } catch (error) {
     console.error("שגיאה קריטית במחיקת מחסן ותכולתו:", error);
-    alert("אירעה שגיאה במחיקה.");
-    return false;
+    throw new Error("אירעה שגיאה במחיקה.");
   }
 };
 export const validateEquipmentItem = async (itemId: string) => {
@@ -436,7 +429,7 @@ export const validateEquipmentItem = async (itemId: string) => {
     console.log("ווידוא הצליח!");
   } catch (error) {
     console.error("שגיאה בביצוע ווידוא:", error);
-    alert("שגיאה בביצוע הווידוא.");
+    throw new Error("שגיאה בביצוע הווידוא.");
   }
 };
 // src/firebaseUtils.ts
@@ -474,8 +467,7 @@ export const checkoutActivityEquipment = async (
     return true;
   } catch (error) {
     console.error("שגיאה בביצוע Check-out:", error);
-    alert("שגיאה בביצוע Check-out.");
-    return false;
+    throw new Error("שגיאה בביצוע Check-out.");
   }
 };
 
@@ -518,8 +510,7 @@ export const checkinActivityEquipment = async (
     return true;
   } catch (error) {
     console.error("שגיאה בביצוע Check-in:", error);
-    alert("שגיאה בביצוע Check-in.");
-    return false;
+    throw new Error("שגיאה בביצוע Check-in.");
   }
 };
 export const removeItemFromActivity = async (activityId: string, itemId: string) => {
@@ -552,8 +543,7 @@ export const removeItemFromActivity = async (activityId: string, itemId: string)
     return true;
   } catch (error) {
     console.error("שגיאה בהסרת פריט מפעילות:", error);
-    alert("שגיאה בהסרת הפריט.");
-    return false;
+    throw new Error("שגיאה בהסרת הפריט.");
   }
 };
 
@@ -577,8 +567,7 @@ export const bulkUpdateCategory = async (itemIds: string[], newCategory: string 
     return true;
   } catch (error) {
     console.error("שגיאה בעדכון קטגוריה קבוצתי:", error);
-    alert("שגיאה בעדכון הקטגוריות.");
-    return false;
+    throw new Error("שגיאה בעדכון הקטגוריות.");
   }
 };
 
@@ -1294,8 +1283,7 @@ export const removeMemberFromGroup = async (groupId: string, userId: string) => 
 
     const group = groupSnap.data() as Group;
     if (group.ownerId === userId) {
-      alert("לא ניתן להסיר את בעל הקבוצה.");
-      return false;
+      throw new Error("לא ניתן להסיר את בעל הקבוצה.");
     }
 
     const batch = writeBatch(db);
@@ -1336,10 +1324,6 @@ export const associateEntityWithGroup = async (entityType: 'warehouses' | 'activ
  * מחיקת קבוצה (ניקוי חברים וישויות קשורות)
  */
 export const deleteGroup = async (groupId: string) => {
-  if (!confirm("האם אתה בטוח שברצונך למחוק את הקבוצה? פעולה זו תסיר את כל החברים ותנתק את הקבוצה מהמחסנים והפעילויות המשויכים אליה.")) {
-    return false;
-  }
-
   try {
     const groupRef = doc(db, 'groups', groupId);
     const snap = await getDoc(groupRef);

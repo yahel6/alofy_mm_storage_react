@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOffline } from '../contexts/OfflineContext';
+import { useDialog } from '../contexts/DialogContext';
 import type { EquipmentItem } from '../types';
 import { updateEquipmentStatus, deleteEquipmentItem, updateGroupStatusByQuantity, bulkValidateItems } from '../firebaseUtils';
 import QuantityModal from './QuantityModal';
@@ -24,6 +25,7 @@ interface StatusModalProps {
 const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose }) => {
   const navigate = useNavigate();
   const { isOffline } = useOffline();
+  const { showAlert, showConfirm } = useDialog();
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<EquipmentItem['status'] | null>(null);
 
@@ -50,12 +52,16 @@ const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose }) => {
     onClose();
   };
 
-  const handleDelete = () => {
-    // Current delete logic is document-based. For now, we delete specific documents?
-    // Or do we delete the whole group? Usually, users click a specific row.
-    // Let's stick to the primary item for delete/edit to avoid complexity unless asked.
-    deleteEquipmentItem(primaryItem.id);
-    onClose();
+  const handleDelete = async () => {
+    const confirmed = await showConfirm(`האם אתה בטוח שברצונך למחוק את הפריט? אין דרך לשחזר פעולה זו.`, 'מחיקת פריט');
+    if (confirmed) {
+      try {
+        await deleteEquipmentItem(primaryItem.id);
+      } catch (error: any) {
+        await showAlert(error.message || 'שגיאה במחיקת הפריט', 'שגיאה');
+      }
+      onClose();
+    }
   };
 
   const handleEdit = () => {

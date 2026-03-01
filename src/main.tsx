@@ -11,6 +11,8 @@ import { ValidationProvider } from './contexts/ValidationContext.tsx';
 import { SelectionProvider } from './contexts/SelectionContext.tsx';
 import { OfflineProvider } from './contexts/OfflineContext.tsx';
 
+import { DialogProvider } from './contexts/DialogContext.tsx';
+
 // ... (rest of imports)
 
 // ייבוא כל העמודים שהאפליקציה צריכה
@@ -42,13 +44,15 @@ const router = createBrowserRouter([
     path: "/",
     element: (
       <ProtectedRoute>
-        <DatabaseProvider>
-          <ValidationProvider>
-            <SelectionProvider>
-              <App />
-            </SelectionProvider>
-          </ValidationProvider>
-        </DatabaseProvider>
+        <DialogProvider>
+          <DatabaseProvider>
+            <ValidationProvider>
+              <SelectionProvider>
+                <App />
+              </SelectionProvider>
+            </ValidationProvider>
+          </DatabaseProvider>
+        </DialogProvider>
       </ProtectedRoute>
     ),
     // כל הנתיבים כאן יוצגו בתוך ה-<Outlet /> של App.tsx

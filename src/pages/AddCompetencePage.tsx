@@ -4,6 +4,7 @@ import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { createCompetence } from '../firebaseCompetences';
 import HeaderNav from '../components/HeaderNav';
+import CustomSelect from '../components/CustomSelect';
 import './CompetencesPage.css';
 
 const AddCompetencePage: React.FC = () => {
@@ -111,17 +112,13 @@ const AddCompetencePage: React.FC = () => {
                 <form onSubmit={handleSubmit} className="comp-card" style={{ padding: '20px' }}>
                     <div className="form-group">
                         <label>קבוצה שייכת</label>
-                        <select
+                        <CustomSelect
                             value={selectedGroupId}
-                            onChange={(e) => setSelectedGroupId(e.target.value)}
+                            onChange={setSelectedGroupId}
                             className="group-selector"
-                            required
-                        >
-                            <option value="" disabled>-- בחר קבוצה --</option>
-                            {userGroups.map(g => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                        </select>
+                            options={userGroups.map(g => ({ value: g.id, label: g.name }))}
+                            placeholder="-- בחר קבוצה --"
+                        />
                     </div>
 
                     <div className="form-group">
