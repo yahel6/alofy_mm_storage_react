@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import HeaderNav from '../components/HeaderNav';
@@ -37,6 +37,7 @@ const CompetencesPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
     const [fullViewData, setFullViewData] = useState<{ type: 'member' | 'competence', id: string, name: string } | null>(null);
+    const navigate = useNavigate();
 
     // Update activeTab if URL changes
     useEffect(() => {
@@ -310,8 +311,8 @@ const CompetencesPage: React.FC = () => {
                                 }}
                             >
                                 <div className="card-header-flex">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <h3 style={{ margin: 0 }}>{competence.name}</h3>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                        <h3 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{competence.name}</h3>
                                         {competence.notes && (
                                             <button
                                                 className={`info-icon-btn-micro ${expandedNotes[competence.id] ? 'active' : ''}`}
@@ -319,7 +320,37 @@ const CompetencesPage: React.FC = () => {
                                             >תיאור</button>
                                         )}
                                     </div>
-                                    {renderScoreBadge(averageScore)}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                        {renderScoreBadge(averageScore)}
+                                        {/* 3-dot edit button - hidden when offline */}
+                                        {!isOffline && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/competences/edit/${competence.id}`);
+                                                }}
+                                                title="ערוך כשירות"
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--text-secondary)',
+                                                    cursor: 'pointer',
+                                                    padding: '4px 6px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '1.2rem',
+                                                    lineHeight: 1,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'background 0.15s'
+                                                }}
+                                                onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                                                onMouseOut={e => (e.currentTarget.style.background = 'none')}
+                                            >
+                                                ⋮
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {expandedNotes[competence.id] && competence.notes && (

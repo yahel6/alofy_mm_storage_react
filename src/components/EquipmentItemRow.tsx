@@ -11,6 +11,8 @@ interface EquipmentItemRowProps {
   onToggle?: () => void;
   onOpenSubItems?: (item: EquipmentItem) => void;
   onLongPress?: () => void;
+  isDemoWarehouse?: boolean;
+  isDemoReadOnly?: boolean;
 }
 
 const statusMap = {
@@ -22,7 +24,7 @@ const statusMap = {
   'missing': { text: 'חסר', class: 'status-missing' }
 };
 
-const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems, onLongPress }) => {
+const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems, onLongPress, isDemoWarehouse, isDemoReadOnly }) => {
   const { users } = useDatabase();
   const timerRef = useRef<number | null>(null);
   const [isLongPressTriggered, setIsLongPressTriggered] = useState(false);
@@ -33,7 +35,8 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
     day: '2-digit', month: '2-digit', year: '2-digit'
   });
 
-  const secondaryInfo = `אחראי: ${manager?.displayName || '...'} • ווידוא: ${checkDate}`;
+  const managerText = manager?.displayName ? `אחראי: ${manager.displayName}` : 'ללא אחראי';
+  const secondaryInfo = `${managerText} • ווידוא: ${checkDate}`;
 
 
   const startPress = () => {
@@ -63,7 +66,8 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
     if (isSelectable) {
       if (onToggle) onToggle();
     } else {
-      onClick();
+      // In demo mode for non-admins, clicking the item row (outside the checkbox) does nothing
+      if (!isDemoReadOnly && onClick) onClick();
     }
   };
 
@@ -126,11 +130,17 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
                 gap: '4px'
               }}
             >
-              {item.subItems && item.subItems.length > 0 ? `רשמ"צ (${item.subItems.length}) | ` : ''}
-              הערות ({item.comments?.length || 0})
+              {isDemoWarehouse ? (
+                <>רשמ"צ פנימי ({item.subItems?.length || 0})</>
+              ) : (
+                <>
+                  {item.subItems && item.subItems.length > 0 ? `רשמ"צ (${item.subItems.length}) | ` : ''}
+                  הערות ({item.comments?.length || 0})
+                </>
+              )}
             </button>
           </div>
-          {item.status !== 'loaned' && (
+          {!isDemoWarehouse && item.status !== 'loaned' && (
             <div className="equipment-secondary-info" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {secondaryInfo}
             </div>
@@ -138,17 +148,19 @@ const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSe
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-          {item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - (item.validationDays ?? 7) * 24 * 60 * 60 * 1000) && (
+          {!isDemoWarehouse && item.status === 'available' && new Date(item.lastCheckDate) < new Date(Date.now() - (item.validationDays ?? 7) * 24 * 60 * 60 * 1000) && (
             <div className="validation-warning" title={`נדרש ווידוא (לא נבדק ב-${item.validationDays ?? 7} ימים האחרונים)`}>
               ⚠️
               <span className="warning-text">וידוא</span>
             </div>
           )}
 
-          <div className={`equipment-status ${statusMap[item.status]?.class || 'status-grey'}`} style={{ padding: item.status === 'available' ? '4px' : undefined }}>
-            <span className="status-dot" style={{ marginRight: item.status === 'available' ? '0' : undefined }}></span>
-            {item.status !== 'available' && <span>{statusMap[item.status]?.text || 'לא ידוע'}</span>}
-          </div>
+          {!isDemoWarehouse && (
+            <div className={`equipment-status ${statusMap[item.status]?.class || 'status-grey'}`} style={{ padding: item.status === 'available' ? '4px' : undefined }}>
+              <span className="status-dot" style={{ marginRight: item.status === 'available' ? '0' : undefined }}></span>
+              {item.status !== 'available' && <span>{statusMap[item.status]?.text || 'לא ידוע'}</span>}
+            </div>
+          )}
         </div>
       </div>
     </div>

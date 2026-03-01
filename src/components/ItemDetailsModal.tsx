@@ -14,6 +14,7 @@ import './ItemDetailsModal.css';
 interface ItemDetailsModalProps {
     itemId: string;
     onClose: () => void;
+    isDemoWarehouse?: boolean;
 }
 
 const statusOptions: { id: EquipmentStatus; text: string; dotClass: string }[] = [
@@ -37,9 +38,11 @@ const getStatusColor = (statusId: EquipmentStatus) => {
     }
 };
 
-const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) => {
+const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, isDemoWarehouse }) => {
     const { equipment, currentUser } = useDatabase();
     const { isOffline } = useOffline();
+
+    const isDemoReadOnly = isDemoWarehouse && currentUser?.role !== 'admin';
 
     // Auto-update when equipment changes in context
     const item = equipment.find(e => e.id === itemId);
@@ -144,11 +147,13 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) 
                                             <span className="subitem-name">{sub.name}</span>
 
                                             <div className="subitem-actions">
-                                                {isOffline ? (
-                                                    // קריאה בלבד כשאופליין
+                                                {isOffline || isDemoWarehouse ? (
+                                                    // קריאה בלבד כשאופליין או מחסן לדוגמא
                                                     <span style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '6px 10px', border: '1px solid #555', borderRadius: '12px' }}>
-                                                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getStatusColor(sub.status), display: 'inline-block', marginLeft: '6px' }}></span>
-                                                        {statusOptions.find(o => o.id === sub.status)?.text}
+                                                        {!isDemoWarehouse && (
+                                                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getStatusColor(sub.status), display: 'inline-block', marginLeft: '6px' }}></span>
+                                                        )}
+                                                        {isDemoWarehouse ? 'פריט רשמ"צ' : statusOptions.find(o => o.id === sub.status)?.text}
                                                     </span>
                                                 ) : (
                                                     <div className="sub-item-status-wrapper">
@@ -185,7 +190,7 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) 
                                                     </div>
                                                 )}
 
-                                                {!isOffline && (
+                                                {!isOffline && !isDemoReadOnly && (
                                                     <button
                                                         className="delete-subitem-btn"
                                                         onClick={() => handleDeleteSubItem(sub.id, sub.name)}
@@ -205,8 +210,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) 
                             )}
                         </div>
 
-                        {/* Add Quick Sub-item - hidden offline */}
-                        {!isOffline && (
+                        {/* Add Quick Sub-item - hidden offline or in demo */}
+                        {!isOffline && !isDemoReadOnly && (
                             <div className="add-subitem-controls">
                                 <input
                                     type="text"
@@ -227,76 +232,78 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose }) 
                         )}
                     </div>
 
-                    {/* --- 2. Comments Section --- */}
-                    <div className="comments-section">
-                        <h4 className="section-title">הערות ({comments.length})</h4>
+                    {/* --- 2. Comments Section (Hidden entirely in Demo Mode) --- */}
+                    {!isDemoWarehouse && (
+                        <div className="comments-section">
+                            <h4 className="section-title">הערות ({comments.length})</h4>
 
-                        <div className="comments-list" ref={commentsListRef}>
-                            {comments.length === 0 ? (
-                                <p className="empty-comments">אין הערות לפריט זה. היה הראשון להגיב!</p>
-                            ) : (
-                                comments.map(comment => {
-                                    const isMine = comment.userId === currentUser.uid;
-                                    return (
-                                        <div key={comment.id} className={`comment-bubble-wrapper ${isMine ? 'my-comment' : 'other-comment'}`}>
-                                            <div className="comment-bubble">
-                                                <div className="comment-header">
-                                                    <span className="comment-author">{isMine ? 'אני' : comment.userName}</span>
-                                                    {(isMine || currentUser.role === 'admin') && (
-                                                        <button
-                                                            className="btn-delete-comment"
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                handleDeleteComment(comment.id);
-                                                            }}
-                                                            title="מחק הערה"
-                                                        >
-                                                            מחק
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <div className="comment-text">
-                                                    {comment.text}
-                                                </div>
-                                                <div className="comment-footer">
-                                                    <div style={{ flex: 1 }}></div>
-                                                    <span className="comment-time">{formatTime(comment.createdAt)}</span>
+                            <div className="comments-list" ref={commentsListRef}>
+                                {comments.length === 0 ? (
+                                    <p className="empty-comments">אין הערות לפריט זה. היה הראשון להגיב!</p>
+                                ) : (
+                                    comments.map(comment => {
+                                        const isMine = comment.userId === currentUser.uid;
+                                        return (
+                                            <div key={comment.id} className={`comment-bubble-wrapper ${isMine ? 'my-comment' : 'other-comment'}`}>
+                                                <div className="comment-bubble">
+                                                    <div className="comment-header">
+                                                        <span className="comment-author">{isMine ? 'אני' : comment.userName}</span>
+                                                        {(isMine || currentUser.role === 'admin') && (
+                                                            <button
+                                                                className="btn-delete-comment"
+                                                                onClick={e => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteComment(comment.id);
+                                                                }}
+                                                                title="מחק הערה"
+                                                            >
+                                                                מחק
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <div className="comment-text">
+                                                        {comment.text}
+                                                    </div>
+                                                    <div className="comment-footer">
+                                                        <div style={{ flex: 1 }}></div>
+                                                        <span className="comment-time">{formatTime(comment.createdAt)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })
+                                        );
+                                    })
+                                )}
+                            </div>
+
+                            {/* Send Comment Area - hidden offline */}
+                            {isOffline ? (
+                                <div style={{ padding: '10px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px', borderTop: '1px solid #333', marginTop: '8px' }}>
+                                    📵 לא ניתן לשלוח הערות במצב אופליין
+                                </div>
+                            ) : (
+                                <div className="add-comment-controls">
+                                    <textarea
+                                        className="comment-input"
+                                        placeholder="הקלד הערה..."
+                                        value={newCommentText}
+                                        onChange={e => setNewCommentText(e.target.value)}
+                                        onKeyDown={handleKeyDownComment}
+                                        rows={1}
+                                    />
+                                    <button
+                                        className="btn-send-comment"
+                                        onClick={handleSendComment}
+                                        disabled={isSendingComment || !newCommentText.trim()}
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }}>
+                                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                        </svg>
+                                    </button>
+                                </div>
                             )}
                         </div>
-
-                        {/* Send Comment Area - hidden offline */}
-                        {isOffline ? (
-                            <div style={{ padding: '10px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px', borderTop: '1px solid #333', marginTop: '8px' }}>
-                                📵 לא ניתן לשלוח הערות במצב אופליין
-                            </div>
-                        ) : (
-                            <div className="add-comment-controls">
-                                <textarea
-                                    className="comment-input"
-                                    placeholder="הקלד הערה..."
-                                    value={newCommentText}
-                                    onChange={e => setNewCommentText(e.target.value)}
-                                    onKeyDown={handleKeyDownComment}
-                                    rows={1}
-                                />
-                                <button
-                                    className="btn-send-comment"
-                                    onClick={handleSendComment}
-                                    disabled={isSendingComment || !newCommentText.trim()}
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }}>
-                                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                    </svg>
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    )}
 
                 </div>
             </div>

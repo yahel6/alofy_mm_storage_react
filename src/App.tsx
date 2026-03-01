@@ -6,6 +6,8 @@ import Fab from './components/Fab.tsx';
 import QuickAddModal from './components/QuickAddModal.tsx';
 import OfflineBanner from './components/OfflineBanner.tsx';
 import { useOffline } from './contexts/OfflineContext.tsx';
+import { useDatabase } from './contexts/DatabaseContext.tsx';
+// --- תיקון: ייבוא AnimatePresence ו-motion בשביל עמוד במעבר ---
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 
 import './App.css';
@@ -46,6 +48,11 @@ function App() {
   const warehouseMatch = matchPath({ path: "/warehouses/:warehouseId" }, location.pathname);
   const currentWarehouseId = warehouseMatch?.params.warehouseId;
 
+  // Check if current warehouse is Demo mode and user is not admin
+  const { warehouses, currentUser } = useDatabase();
+  const currentWarehouse = warehouses.find(w => w.id === currentWarehouseId);
+  const isDemoMode = !!(currentWarehouse?.isDemo && currentUser?.role !== 'admin');
+
   return (
     <div className="app-container">
       {/* Offline banner - shows at top of every page when offline */}
@@ -78,8 +85,8 @@ function App() {
 
       <BottomNav />
 
-      {/* FAB is hidden when offline - no editing allowed */}
-      {!isOffline && (
+      {/* FAB is hidden when offline, or in demo mode for non-admin */}
+      {!isOffline && !isDemoMode && (
         <>
           <Fab onClick={() => setIsAddModalOpen(true)} />
           <QuickAddModal

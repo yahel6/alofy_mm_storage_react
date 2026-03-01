@@ -40,7 +40,19 @@ function WarehousesPage() {
                 style={{ textDecoration: 'none' }} // ביטול קו תחתון
               >
                 <div>
-                  <h3 className="warehouse-card-title">{warehouse.name}</h3>
+                  <h3 className="warehouse-card-title">
+                    {warehouse.isDemo && (
+                      <span style={{
+                        fontSize: '11px', fontWeight: 'normal',
+                        background: 'rgba(255, 204, 0, 0.18)',
+                        color: '#f5c518',
+                        border: '1px solid rgba(255,204,0,0.3)',
+                        padding: '1px 6px', borderRadius: '4px',
+                        marginLeft: '6px', verticalAlign: 'middle'
+                      }}>📚 לדוגמא</span>
+                    )}
+                    {warehouse.name}
+                  </h3>
                   <div className={`warehouse-card-status ${statusClass}`}>
                     {count.available}/{count.total} פריטים כשירים
                   </div>

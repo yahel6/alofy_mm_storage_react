@@ -17,6 +17,7 @@ import {
   bulkValidateItems,
   bulkUpdateStatus,
   bulkMoveItemsToWarehouse,
+  bulkCopyItemsToWarehouse,
   bulkAssignItemsToActivity,
   updateGroupStatusByQuantity,
   bulkUpdateValidationDays
@@ -31,8 +32,9 @@ function WarehouseDetailsPage() {
   const { warehouseId } = useParams<{ warehouseId: string }>();
   const scopeId = warehouseId || 'unknown_warehouse';
 
-  const { warehouses, equipment, users, activities, isLoading } = useDatabase();
+  const { warehouses, equipment, users, activities, isLoading, currentUser } = useDatabase();
   const { isOffline } = useOffline();
+  const isUserAdmin = currentUser?.role === 'admin';
   const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
   const { isSelectionModeActive, getSelectedItems, toggleSelectionMode: globalToggleSelectionMode, toggleItemSelection: globalToggleItemSelection, clearSelection } = useSelection();
 
@@ -55,7 +57,7 @@ function WarehouseDetailsPage() {
   const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
 
   // Bulk Action Modals State
-  const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'activity' | 'category' | 'validationDays' | null>(null);
+  const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'copy' | 'activity' | 'category' | 'validationDays' | null>(null);
   const [tempSelection, setTempSelection] = useState<string>(''); // For storing the selected Status/WarehouseId/ActivityId
 
   // State for splitting
@@ -98,6 +100,8 @@ function WarehouseDetailsPage() {
         success = await bulkMoveItemsToWarehouse(ids, tempSelection);
       } else if (bulkAction === 'activity') {
         success = await bulkAssignItemsToActivity(ids, tempSelection);
+      } else if (bulkAction === 'copy') {
+        success = await bulkCopyItemsToWarehouse(ids, tempSelection);
       } else if (bulkAction === 'validationDays') {
         const days = parseInt(tempSelection, 10);
         if (days > 0) {
@@ -242,7 +246,12 @@ function WarehouseDetailsPage() {
           // Create a virtual item for the row display
           const virtualItem = {
             ...first,
-            quantity: group.quantity
+            quantity: group.quantity,
+            // In demo warehouse, scrub status and check date to prevent any child components from deriving a visual badge 
+            ...(isDemoWarehouse && {
+              status: 'available' as any, // Reset to neutral to avoid color
+              lastCheckDate: new Date().toISOString() // Reset to now to avoid "Requires Validation" warnings
+            })
           };
 
           return (
@@ -279,7 +288,9 @@ function WarehouseDetailsPage() {
                     });
                   }
                 }}
-                onOpenSubItems={(itm) => setSubItemsModalItemId(itm.id)}
+                onOpenSubItems={(itm: any) => setSubItemsModalItemId(itm.id)}
+                isDemoWarehouse={isDemoWarehouse}
+                isDemoReadOnly={isDemoReadOnly}
               />
             </div>
           );
@@ -326,6 +337,10 @@ function WarehouseDetailsPage() {
   const warehouse = warehouses.find(w => w.id === warehouseId);
   const otherWarehouses = warehouses.filter(w => w.id !== warehouseId);
 
+  // מצב מחסן לדוגמא
+  const isDemoWarehouse = !!warehouse?.isDemo;
+  const isDemoReadOnly = isDemoWarehouse && !isUserAdmin;
+
   if (!warehouse) {
     return <div><HeaderNav title="שגיאה" /><p style={{ textAlign: 'center' }}>מחסן לא נמצא.</p></div>;
   }
@@ -360,6 +375,14 @@ function WarehouseDetailsPage() {
       );
     } else if (bulkAction === 'move') {
       title = 'העברה למחסן אחר';
+      content = (
+        <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
+          <option value="">בחר מחסן יעד...</option>
+          {otherWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+        </select>
+      );
+    } else if (bulkAction === 'copy') {
+      title = 'העתקה למחסן אחר (פריטים יישארו במקור)';
       content = (
         <select className="form-select" value={tempSelection} onChange={e => setTempSelection(e.target.value)}>
           <option value="">בחר מחסן יעד...</option>
@@ -409,8 +432,27 @@ function WarehouseDetailsPage() {
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'var(--bg-color)', paddingBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <HeaderNav
           title={warehouse.name}
-          onOptionsMenuClick={() => setIsOptionsModalOpen(true)}
+          onOptionsMenuClick={!isDemoReadOnly ? () => setIsOptionsModalOpen(true) : undefined}
         />
+
+        {/* Demo warehouse banner */}
+        {warehouse.isDemo && (
+          <div style={{
+            background: 'rgba(255, 204, 0, 0.12)',
+            color: '#f5c518',
+            padding: '10px 16px',
+            textAlign: 'center',
+            fontSize: '13px',
+            borderBottom: '1px solid rgba(255, 204, 0, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+          }}>
+            <span>📚</span>
+            <span>מחסן לדוגמא בלבד — {isDemoReadOnly ? 'דיפדוף ובחר פריטים להעתקה למחסן שלך' : 'מצב עריכה (אדמין)'}</span>
+          </div>
+        )}
 
         {isValidationMode && (
           <div style={{
@@ -477,7 +519,7 @@ function WarehouseDetailsPage() {
               {isGroupedByCategory ? 'בטל מיון' : 'מיין'}
             </button>
 
-            {/* Selection mode and validation - hidden offline */}
+            {/* Validation mode & selection tools — hidden offline and in demo mode for non-admins */}
             {!isOffline && (
               <>
                 <button
@@ -491,7 +533,8 @@ function WarehouseDetailsPage() {
                   {isSelectionMode ? 'בטל' : 'בחר'}
                 </button>
 
-                {!isValidationMode && (
+                {/* Validation button hidden for all users in demo warehouse */}
+                {!isDemoWarehouse && !isValidationMode && (
                   <button onClick={() => startSession(scopeId)}>
                     ווידוא
                   </button>
@@ -527,9 +570,13 @@ function WarehouseDetailsPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-              <button className="bulk-btn" onClick={handleBulkValidate}>✅ ווידוא</button>
+              {/* Validate — hidden in demo mode for everyone */}
+              {!isDemoWarehouse && (
+                <button className="bulk-btn" onClick={handleBulkValidate}>✅ ווידוא</button>
+              )}
 
-              {!isValidationMode && (
+              {/* Full actions — only shown to admins in demo warehouse */}
+              {!isValidationMode && !isDemoReadOnly && (
                 <>
                   <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('status'); }}>🔄 סטטוס</button>
                   <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('category'); }}>🏷️ קטגוריה</button>
@@ -537,6 +584,11 @@ function WarehouseDetailsPage() {
                   <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('activity'); }}>📌 לפעילות</button>
                   <button className="bulk-btn" onClick={() => { setTempSelection('7'); setBulkAction('validationDays'); }}>⏱️ זמן וידוא</button>
                 </>
+              )}
+
+              {/* Copy — always available */}
+              {!isValidationMode && (
+                <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('copy'); }}>📋 העתקה</button>
               )}
             </div>
           </div>
@@ -633,6 +685,7 @@ function WarehouseDetailsPage() {
         <ItemDetailsModal
           itemId={subItemsModalItemId}
           onClose={() => setSubItemsModalItemId(null)}
+          isDemoWarehouse={isDemoWarehouse}
         />
       )}
     </div>

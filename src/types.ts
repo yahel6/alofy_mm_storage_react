@@ -39,6 +39,8 @@ export interface Warehouse {
   categories?: string[];
   /** מזהה הקבוצה אליה המחסן משוייך (אופציונלי) */
   groupId: string;
+  /** מחסן לדוגמא - גלוי לכלל המשתמשים, ניתן להעתיק ממנו בלבד */
+  isDemo?: boolean;
 }
 
 export interface EquipmentComment {

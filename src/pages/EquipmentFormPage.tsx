@@ -43,13 +43,11 @@ function EquipmentFormPage() {
   useEffect(() => {
     if (!isEditMode) {
       const defaultWarehouseId = searchParams.get('warehouseId') || '';
-      const defaultManagerId = currentUser?.uid || '';
-
-      if (defaultWarehouseId || defaultManagerId) {
+      if (defaultWarehouseId) {
         setFormData(prev => ({
           ...prev,
           warehouseId: prev.warehouseId || defaultWarehouseId,
-          managerUserId: prev.managerUserId || defaultManagerId,
+          // managerUserId starts empty by default as requested
         }));
       }
     }
@@ -124,9 +122,8 @@ function EquipmentFormPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ולידציה בסיסית
-    if (!formData.name || !formData.warehouseId || !formData.managerUserId || !formData.lastCheckDate) {
-      alert("אנא מלא את כל השדות.");
+    if (!formData.name || !formData.warehouseId || !formData.lastCheckDate) {
+      alert("אנא מלא את שדות החובה: שם, מחסן ותאריך.");
       return;
     }
 
@@ -143,8 +140,8 @@ function EquipmentFormPage() {
       // --- מצב הוספה ---
       const newId = await addNewEquipment(formData);
       if (newId) {
-        // חזור לרשימת המחסנים
-        navigate('/warehouses');
+        // חזור למחסן שאליו הוספנו את הפריט
+        navigate(`/warehouses/${formData.warehouseId}`);
       } else {
         alert("שגיאה בהוספת הפריט.");
       }
@@ -243,9 +240,8 @@ function EquipmentFormPage() {
               id="managerUserId"
               value={formData.managerUserId}
               onChange={handleChange}
-              required
             >
-              <option value="">בחר אחראי...</option>
+              <option value="">ללא אחראי</option>
               {users.map(u => (
                 <option key={u.uid} value={u.uid}>{u.displayName}</option>
               ))}

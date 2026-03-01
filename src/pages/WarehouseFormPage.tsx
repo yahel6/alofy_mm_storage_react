@@ -13,6 +13,7 @@ type FormData = {
   /** קלט טקסטואלי עם פסיקים בין קטגוריות: "מטענים, סנסורים, כבלים" */
   categoriesText: string;
   groupId: string;
+  isDemo: boolean;
 };
 
 export default function WarehouseFormPage() {
@@ -33,6 +34,7 @@ export default function WarehouseFormPage() {
     name: '',
     categoriesText: '',
     groupId: '',
+    isDemo: false,
   });
 
   useEffect(() => {
@@ -41,13 +43,19 @@ export default function WarehouseFormPage() {
         name: current.name,
         categoriesText: (current.categories ?? []).join(', '),
         groupId: current.groupId || '',
+        isDemo: current.isDemo || false,
       });
     }
   }, [isEdit, current]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { id, value } = e.target;
-    setForm(prev => ({ ...prev, [id]: value }));
+    const { id, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setForm(prev => ({ ...prev, [id]: checked }));
+    } else {
+      setForm(prev => ({ ...prev, [id]: value }));
+    }
   };
 
   const toCategoriesArray = (text: string) =>
@@ -66,19 +74,19 @@ export default function WarehouseFormPage() {
       return;
     }
 
-    if (!form.groupId) {
+    if (!form.groupId && !form.isDemo) {
       alert('חובה לבחור קבוצה למחסן.');
       return;
     }
 
     if (isEdit && warehouseId) {
-      const ok = await updateWarehouse(warehouseId, { name, categories, groupId: form.groupId });
+      const ok = await updateWarehouse(warehouseId, { name, categories, groupId: form.groupId, isDemo: form.isDemo });
       if (ok) {
         alert('המחסן עודכן בהצלחה');
         navigate(`/warehouses/${warehouseId}`);
       }
     } else {
-      const id = await addNewWarehouse({ name, categories, groupId: form.groupId });
+      const id = await addNewWarehouse({ name, categories, groupId: form.groupId, isDemo: form.isDemo });
       if (id) {
         alert('המחסן נוצר בהצלחה');
         navigate(`/warehouses/${id}`);
@@ -108,24 +116,26 @@ export default function WarehouseFormPage() {
               required
             />
           </div>
-          <div className="form-group">
-            <label htmlFor="groupId">שיוך לקבוצה (חובה)</label>
-            <select
-              id="groupId"
-              value={form.groupId}
-              onChange={handleChange}
-              required
-            >
-              <option value="" disabled>בחר קבוצה...</option>
-              {groups
-                .filter(group => group.members.includes(currentUser?.uid || ''))
-                .map(group => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-            </select>
-          </div>
+          {!form.isDemo && (
+            <div className="form-group">
+              <label htmlFor="groupId">שיוך לקבוצה (חובה)</label>
+              <select
+                id="groupId"
+                value={form.groupId}
+                onChange={handleChange}
+                required={!form.isDemo}
+              >
+                <option value="" disabled>בחר קבוצה...</option>
+                {groups
+                  .filter(group => group.members.includes(currentUser?.uid || ''))
+                  .map(group => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="categoriesText">
@@ -139,6 +149,21 @@ export default function WarehouseFormPage() {
               placeholder="לדוגמה: מטענים, סנסורים, כבלים"
             />
           </div>
+
+          {currentUser?.role === 'admin' && (
+            <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '10px' }}>
+              <input
+                id="isDemo"
+                type="checkbox"
+                checked={form.isDemo}
+                onChange={handleChange}
+                style={{ width: '20px', height: '20px' }}
+              />
+              <label htmlFor="isDemo" style={{ marginBottom: 0 }}>
+                מחסן לדוגמא (גלוי לכלל המשתמשים באפליקציה, ניתן להעתקה בלבד)
+              </label>
+            </div>
+          )}
 
           <div className="save-bar">
             <button type="submit" className="btn-submit">

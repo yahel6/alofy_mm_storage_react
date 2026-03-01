@@ -309,16 +309,17 @@ export const updateActivityEquipment = async (activityId: string, newEquipmentId
 }
 
 /** יצירת מחסן חדש (עם/בלי קטגוריות) */
-export const addNewWarehouse = async (data: { name: string; categories?: string[]; groupId?: string }) => {
+export const addNewWarehouse = async (data: { name: string; categories?: string[]; groupId?: string; isDemo?: boolean }) => {
   const name = (data.name ?? '').trim();
   const categories = (data.categories ?? []).map(c => c.trim()).filter(Boolean);
   const groupId = data.groupId;
+  const isDemo = data.isDemo || false;
 
   if (!name) {
     alert('שם מחסן לא יכול להיות ריק.');
     return null;
   }
-  if (!groupId) {
+  if (!groupId && !isDemo) {
     alert('חובה לבחור קבוצה למחסן.');
     return null;
   }
@@ -327,6 +328,7 @@ export const addNewWarehouse = async (data: { name: string; categories?: string[
     const ref = await addDoc(collection(db, 'warehouses'), {
       name,
       groupId,
+      isDemo,
       ...(categories.length ? { categories } : {})
     });
     return ref.id;
@@ -338,10 +340,11 @@ export const addNewWarehouse = async (data: { name: string; categories?: string[
 };
 
 /** עדכון מחסן קיים (כולל עדכון קטגוריות) */
-export const updateWarehouse = async (warehouseId: string, data: { name: string; categories?: string[]; groupId?: string }) => {
+export const updateWarehouse = async (warehouseId: string, data: { name: string; categories?: string[]; groupId?: string; isDemo?: boolean }) => {
   const name = (data.name ?? '').trim();
   const categories = (data.categories ?? []).map(c => c.trim()).filter(Boolean);
   const groupId = data.groupId;
+  const isDemo = data.isDemo; // Optional to prevent overwriting if not passed
 
   if (!warehouseId) {
     alert('שגיאה: חסר מזהה מחסן.');
@@ -351,7 +354,7 @@ export const updateWarehouse = async (warehouseId: string, data: { name: string;
     alert('שם מחסן לא יכול להיות ריק.');
     return false;
   }
-  if (!groupId) {
+  if (!groupId && !isDemo) {
     alert('חובה לבחור קבוצה למחסן.');
     return false;
   }
@@ -366,6 +369,7 @@ export const updateWarehouse = async (warehouseId: string, data: { name: string;
     await updateDoc(ref, {
       name,
       groupId,
+      ...(isDemo !== undefined ? { isDemo } : {}),
       ...(categories ? { categories } : {})
     });
     return true;
@@ -734,6 +738,74 @@ export const bulkMoveItemsToWarehouse = async (itemIds: string[], targetWarehous
     return true;
   } catch (error) {
     console.error("error bulk move:", error);
+    return false;
+  }
+};
+
+/**
+ * העתקת פריטים למחסן אחר (הפריטים המקוריים נשארים)
+ * אם קיים פריט זהה במחסן היעד — ממזג כמויות (לא יוצר כפילות)
+ */
+export const bulkCopyItemsToWarehouse = async (itemIds: string[], targetWarehouseId: string) => {
+  if (!itemIds.length) return false;
+
+  console.log(`מעתיק ${itemIds.length} פריטים למחסן ${targetWarehouseId}...`);
+
+  const batch = writeBatch(db);
+  const itemsRef = collection(db, 'equipment');
+
+  try {
+    // 1. Fetch all items to copy
+    const snaps = await Promise.all(itemIds.map(id => getDoc(doc(db, 'equipment', id))));
+    const items = snaps.map(snap => ({ id: snap.id, ...snap.data() } as EquipmentItem));
+
+    for (const item of items) {
+      if (!item) continue;
+
+      const normalizedName = (item.name || "").trim();
+      const normalizedCategory = item.category || null;
+
+      // Check if identical item already exists in target warehouse (to merge instead of duplicate)
+      const q = query(
+        itemsRef,
+        where('warehouseId', '==', targetWarehouseId),
+        where('name', '==', normalizedName),
+        where('status', '==', item.status),
+        where('category', '==', normalizedCategory),
+        where('assignedActivityId', '==', item.assignedActivityId || null)
+      );
+
+      const matchSnap = await getDocs(q);
+
+      if (!matchSnap.empty) {
+        // Merge quantities with the matching item
+        const targetDoc = matchSnap.docs[0];
+        const newQuantity = (targetDoc.data().quantity || 1) + (item.quantity || 1);
+        batch.update(targetDoc.ref, { quantity: newQuantity });
+        console.log(`פריט ${item.name} מוזג עם פריט קיים במחסן היעד.`);
+      } else {
+        // No match — create a full copy in the target warehouse
+        const newItemRef = doc(collection(db, 'equipment'));
+        const { id, ...itemData } = item;
+        batch.set(newItemRef, {
+          ...itemData,
+          warehouseId: targetWarehouseId,
+          // Reset loaned user since original warehouse owns that relationship
+          loanedToUserId: null,
+          assignedActivityId: null,
+          assignedActivityName: null,
+          // Reset manager to none when copying to a new warehouse
+          managerUserId: '',
+        });
+        console.log(`פריט ${item.name} הועתק כפריט חדש.`);
+      }
+    }
+
+    await batch.commit();
+    console.log("העתקת פריטים הושלמה.");
+    return true;
+  } catch (error) {
+    console.error("error bulk copy:", error);
     return false;
   }
 };

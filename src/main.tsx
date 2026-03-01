@@ -30,6 +30,7 @@ import GroupManagementPage from './pages/GroupManagementPage.tsx';
 import GroupFormPage from './pages/GroupFormPage.tsx';
 import CompetencesPage from './pages/CompetencesPage.tsx';
 import AddCompetencePage from './pages/AddCompetencePage.tsx';
+import EditCompetencePage from './pages/EditCompetencePage.tsx';
 import AdminOnly from './components/AdminOnlyRoute.tsx';
 
 
@@ -67,6 +68,10 @@ const router = createBrowserRouter([
       {
         path: "competences/new", // עמוד הוספת כשירות
         element: <AddCompetencePage />,
+      },
+      {
+        path: "competences/edit/:competenceId", // עריכת כשירות
+        element: <EditCompetencePage />,
       },
       {
         path: "warehouses/:warehouseId", // פרטי מחסן ספציפי

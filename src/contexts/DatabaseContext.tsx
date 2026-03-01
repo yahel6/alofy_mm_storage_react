@@ -178,8 +178,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
   const filteredWarehouses = useMemo(() => {
     if (isUserAdmin) return warehouses;
-    // רק מחסנים ששייכים לקבוצות של המשתמש
-    return warehouses.filter(w => w.groupId && userGroupIds.includes(w.groupId));
+    // מחסן לדוגמא (isDemo) גלוי לכולם; שאר המחסנים לפי קבוצות
+    return warehouses.filter(w => w.isDemo || (w.groupId && userGroupIds.includes(w.groupId)));
   }, [warehouses, userGroupIds, isUserAdmin]);
 
   const filteredActivities = useMemo(() => {
@@ -190,10 +190,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
   const filteredEquipment = useMemo(() => {
     if (isUserAdmin) return equipment;
-    // פריט ציוד נראה אם המחסן שלו שייך לקבוצה של המשתמש
+    // פריט ציוד נראה אם המחסן שלו שייך לקבוצה של המשתמש, או שהמחסן הוא לדוגמא
     return equipment.filter(e => {
       const warehouse = warehouses.find(w => w.id === e.warehouseId);
-      return warehouse && warehouse.groupId && userGroupIds.includes(warehouse.groupId);
+      return warehouse && (warehouse.isDemo || (warehouse.groupId && userGroupIds.includes(warehouse.groupId)));
     });
   }, [equipment, warehouses, userGroupIds, isUserAdmin]);
 
