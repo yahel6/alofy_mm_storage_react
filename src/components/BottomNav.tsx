@@ -54,20 +54,20 @@ const BottomNav = () => {
         <HomeIcon />
         בית
       </NavLink>
-      <NavLink to="/activities" className="nav-item">
+      <NavLink to="/activities" className="nav-item" data-tour="activities-nav">
         <ActivityIcon />
         פעילויות
       </NavLink>
-      <NavLink to="/warehouses" className="nav-item">
+      <NavLink to="/warehouses" className="nav-item" data-tour="warehouses-nav">
         <WarehouseIcon />
         מחסן
       </NavLink>
-      <NavLink to="/competences" className="nav-item">
+      <NavLink to="/competences" className="nav-item" data-tour="competences-nav">
         <CompetencesIcon />
         כשירויות
       </NavLink>
       {isManager && (
-        <NavLink to="/groups" className="nav-item" style={{ position: 'relative' }}>
+        <NavLink to="/groups" className="nav-item" style={{ position: 'relative' }} data-tour="groups-nav">
           <GroupsIcon />
           קבוצות
           {hasNotifications && (

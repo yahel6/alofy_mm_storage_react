@@ -153,11 +153,15 @@ const router = createBrowserRouter([
   },
 ]);
 
+import TourProviderWrapper from './components/TourProviderWrapper.tsx';
+
 // רינדור האפליקציה
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <OfflineProvider>
-      <RouterProvider router={router} />
+      <TourProviderWrapper>
+        <RouterProvider router={router} />
+      </TourProviderWrapper>
     </OfflineProvider>
   </React.StrictMode>,
 )

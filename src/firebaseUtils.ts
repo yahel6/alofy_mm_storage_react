@@ -1048,8 +1048,8 @@ export const createGroupDetailed = async (
   name: string,
   ownerId: string,
   initialMembers: string[],
-  initialWarehouses: string[],
-  initialActivities: string[]
+  _initialWarehouses: string[] = [], // Kept for signature compatibility but unused
+  _initialActivities: string[] = []  // Kept for signature compatibility but unused
 ) => {
   try {
     const batch = writeBatch(db);
@@ -1071,16 +1071,6 @@ export const createGroupDetailed = async (
       batch.update(userRef, {
         groupIds: arrayUnion(groupId)
       });
-    }
-
-    for (const wId of initialWarehouses) {
-      const wRef = doc(db, 'warehouses', wId);
-      batch.update(wRef, { groupId });
-    }
-
-    for (const aId of initialActivities) {
-      const aRef = doc(db, 'activities', aId);
-      batch.update(aRef, { groupId });
     }
 
     await batch.commit();

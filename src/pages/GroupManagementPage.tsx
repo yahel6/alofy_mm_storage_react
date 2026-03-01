@@ -403,7 +403,9 @@ const GroupManagementPage: React.FC = () => {
                                                     onChange={(val: string) => {
                                                         if (val) associateEntityWithGroup('warehouses', val, group.id);
                                                     }}
-                                                    options={allWarehouses.filter(w => w.groupId !== group.id).map(w => ({ value: w.id, label: `${w.name} ${w.groupId ? '(משויך לאחר)' : ''}` }))}
+                                                    options={allWarehouses
+                                                        .filter(w => !w.groupId) // Only show unassigned warehouses
+                                                        .map(w => ({ value: w.id, label: w.name }))}
                                                     placeholder="הוסף מחסן לקבוצה..."
                                                 />
                                             )}
@@ -442,7 +444,9 @@ const GroupManagementPage: React.FC = () => {
                                                     onChange={(val: string) => {
                                                         if (val) associateEntityWithGroup('activities', val, group.id);
                                                     }}
-                                                    options={allActivities.filter(a => a.groupId !== group.id).map(a => ({ value: a.id, label: `${a.name} ${a.groupId ? '(משויך לאחר)' : ''}` }))}
+                                                    options={allActivities
+                                                        .filter(a => !a.groupId) // Only show unassigned activities
+                                                        .map(a => ({ value: a.id, label: a.name }))}
                                                     placeholder="הוסף פעילות לקבוצה..."
                                                 />
                                             )}

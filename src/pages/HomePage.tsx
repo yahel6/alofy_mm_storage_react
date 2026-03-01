@@ -1,7 +1,8 @@
 // src/pages/HomePage.tsx
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useTour } from '@reactour/tour';
 import HeaderNav from '../components/HeaderNav';
 import LoadingScreen from '../components/LoadingScreen';
 import InstallPrompt from '../components/InstallPrompt';
@@ -33,6 +34,19 @@ const formatActivityDate = (dateString: string) => {
 function HomePage() {
   const { currentUser, equipment, activities, competences, competenceRecords, isLoading } = useDatabase();
   const navigate = useNavigate();
+  const { setIsOpen } = useTour();
+
+  useEffect(() => {
+    if (currentUser) {
+      const storageKey = `ordo_onboarding_shown_${currentUser.uid}`;
+      const hasShown = localStorage.getItem(storageKey);
+
+      if (!hasShown) {
+        setIsOpen(true);
+        localStorage.setItem(storageKey, 'true');
+      }
+    }
+  }, [currentUser, setIsOpen]);
 
   // --- 1. עדכון חישוב נתוני "דורש טיפול" ---
   const attentionItems = useMemo(() => {
@@ -144,6 +158,7 @@ function HomePage() {
                 key={item.id}
                 className="attention-item"
                 onClick={() => handleAttentionClick(item.path)}
+                data-tour={item.id === 'validate' ? 'validate-alert' : item.id === 'competences' ? 'competences-alert' : undefined}
               >
                 <div className="attention-details">
                   <span className={`attention-icon ${item.iconClass}`}>
