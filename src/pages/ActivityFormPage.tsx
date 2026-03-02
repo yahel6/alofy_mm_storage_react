@@ -78,7 +78,7 @@ function ActivityFormPage() {
         // --- מצב הוספה ---
         const newId = await addNewActivity(formData);
         if (newId) {
-          navigate('/activities'); // חזור לרשימת הפעילויות
+          navigate(`/activities/${newId}`); // חזור לפרטי הפעילות החדשה
         } else {
           await showAlert("שגיאה בהוספת הפעילות.", "שגיאה");
         }

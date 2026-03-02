@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useOffline } from '../contexts/OfflineContext';
 import { useDialog } from '../contexts/DialogContext';
 import type { EquipmentItem } from '../types';
-import { updateEquipmentStatus, deleteEquipmentItem, updateGroupStatusByQuantity, bulkValidateItems } from '../firebaseUtils';
+import { updateEquipmentStatus, deleteEquipmentItem, updateGroupStatusByQuantity, bulkValidateItems, initiateLoanReturn } from '../firebaseUtils';
 import QuantityModal from './QuantityModal';
 import './Modal.css';
 
@@ -15,6 +15,7 @@ const statusOptions = [
   { id: 'broken', label: 'לא כשיר', dotClass: 'broken' },
   { id: 'missing', label: 'חסר', dotClass: 'missing' },
   { id: 'loaned', label: 'בפעילות', dotClass: 'loaned' },
+  { id: 'borrowed', label: 'ציוד מושאל', dotClass: 'borrowed' },
 ] as const;
 
 interface StatusModalProps {
@@ -89,9 +90,42 @@ const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose }) => {
 
           {isOffline ? (
             <div style={{ color: 'var(--text-secondary)', fontSize: '14px', textAlign: 'center', padding: '16px 0', lineHeight: 1.6 }}>
-              <div style={{ fontSize: '28px', marginBottom: '8px' }}>📵</div>
+              <div style={{ fontSize: '28px', marginBottom: '8px' }}></div>
               <div style={{ fontWeight: 700, marginBottom: '4px' }}>מצב אופליין</div>
               <div>לא ניתן לבצע שינויים ללא חיבור לאינטרנט</div>
+            </div>
+          ) : primaryItem.status === 'borrowed' ? (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '40px', marginBottom: '16px' }}>🟠</div>
+              <h3 style={{ color: '#e67e22', marginBottom: '8px' }}>ציוד מושאל</h3>
+              <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.5' }}>
+                פריט זה מושאל ממחסן אחר. הסטטוס שלו נעול עד להחזרתו לבעלים המקוריים.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '20px' }}>
+                <button className="modal-button btn-validate" onClick={handleValidate}>
+                  בצע ווידוא
+                </button>
+
+                <button
+                  className="modal-button btn-primary"
+                  onClick={async () => {
+                    const confirmed = await showConfirm('האם ברצונך לבקש להחזיר את הציוד למחסן המקורי?', 'החזרת השאלה');
+                    if (confirmed) {
+                      const success = await initiateLoanReturn([primaryItem.id]);
+                      if (success) {
+                        await showAlert('בקשת ההחזרה נשלחה בהצלחה');
+                        onClose();
+                      } else {
+                        await showAlert('אירעה שגיאה בשליחת הבקשה', 'שגיאה');
+                      }
+                    }
+                  }}
+                  style={{ margin: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  🔙 החזר השאלה
+                </button>
+              </div>
             </div>
           ) : (
             <>

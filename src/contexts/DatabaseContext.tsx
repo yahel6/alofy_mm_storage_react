@@ -4,7 +4,7 @@ import { collection, onSnapshot, doc, setDoc, type DocumentData } from 'firebase
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { db, auth } from '../firebaseConfig';
 import { useOffline } from './OfflineContext';
-import type { AppUser, Warehouse, EquipmentItem, Activity, Group, Competence, CompetenceRecord } from '../types';
+import type { AppUser, Warehouse, EquipmentItem, Activity, Group, Competence, CompetenceRecord, SupportChat } from '../types';
 
 // הגדרת מה ה-Context יספק
 interface DatabaseContextState {
@@ -17,6 +17,7 @@ interface DatabaseContextState {
   allActivities: Activity[];
   competences: Competence[];
   competenceRecords: CompetenceRecord[];
+  supportChats: SupportChat[];
   isLoading: boolean;
   currentUser: AppUser | null;
 }
@@ -43,7 +44,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     activities: true,
     competences: true,
     competenceRecords: true,
+    supportChats: true,
   });
+
+  const [supportChats, setSupportChats] = useState<SupportChat[]>([]);
 
   // State למשתמש Auth ומשתמש אפליקציה
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -118,6 +122,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       if (!snapshot.metadata.fromCache) updateLastSynced();
     });
 
+    const unsubSupportChats = onSnapshot(collection(db, 'support_chats'), (snapshot) => {
+      setSupportChats(mapSnapshot<SupportChat>(snapshot));
+      setLoadingStates(prev => ({ ...prev, supportChats: false }));
+      if (!snapshot.metadata.fromCache) updateLastSynced();
+    });
+
     // האזנה לשינויי התחברות (Auth)
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setAuthUser(user); // שמור את משתמש ה-Auth
@@ -131,6 +141,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       unsubActivities();
       unsubCompetences();
       unsubCompetenceRecords();
+      unsubSupportChats();
       unsubAuth();
     };
   }, []); // [] ריק - תריץ רק פעם אחת
@@ -210,7 +221,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     competences,
     competenceRecords,
     isLoading,
-    currentUser
+    currentUser,
+    supportChats
   };
 
   return (

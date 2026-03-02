@@ -20,7 +20,7 @@ function EditActivityEquipmentPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'simple'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'simple'>('simple');
   const [simpleEquipmentText, setSimpleEquipmentText] = useState('');
   const [simpleItems, setSimpleItems] = useState<SimpleEquipmentItem[]>([]);
 
@@ -167,44 +167,46 @@ function EditActivityEquipmentPage() {
             <>
               <h3 style={{ color: 'var(--text-primary)', marginBottom: '16px', fontSize: '1.1rem' }}>בחר מחסן להוספת ציוד:</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
-                {warehouses.map(warehouse => {
-                  const selectedCount = allEquipment.filter(e => e.warehouseId === warehouse.id && selectedIds.has(e.id)).length;
-                  return (
-                    <div
-                      key={warehouse.id}
-                      onClick={() => setSelectedWarehouseId(warehouse.id)}
-                      style={{
-                        background: 'var(--bg-secondary)',
-                        border: '1px solid #444',
-                        borderRadius: '12px',
-                        padding: '20px 12px',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '8px',
-                        transition: 'transform 0.1s',
-                        position: 'relative'
-                      }}
-                    >
-                      <div style={{ fontSize: '24px' }}>🏠</div>
-                      <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{warehouse.name}</div>
-                      {selectedCount > 0 && (
-                        <div style={{
-                          background: 'var(--action-color)',
-                          color: 'white',
+                {warehouses
+                  .filter(w => !activity?.groupId || w.groupId === activity.groupId)
+                  .map(warehouse => {
+                    const selectedCount = allEquipment.filter(e => e.warehouseId === warehouse.id && selectedIds.has(e.id)).length;
+                    return (
+                      <div
+                        key={warehouse.id}
+                        onClick={() => setSelectedWarehouseId(warehouse.id)}
+                        style={{
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid #444',
                           borderRadius: '12px',
-                          padding: '2px 8px',
-                          fontSize: '11px',
-                          marginTop: '4px'
-                        }}>
-                          {selectedCount} נבחרו
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                          padding: '20px 12px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'transform 0.1s',
+                          position: 'relative'
+                        }}
+                      >
+                        <div style={{ fontSize: '24px' }}>🏠</div>
+                        <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{warehouse.name}</div>
+                        {selectedCount > 0 && (
+                          <div style={{
+                            background: 'var(--action-color)',
+                            color: 'white',
+                            borderRadius: '12px',
+                            padding: '2px 8px',
+                            fontSize: '11px',
+                            marginTop: '4px'
+                          }}>
+                            {selectedCount} נבחרו
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </>
           ) : (

@@ -21,7 +21,8 @@ const statusMap = {
   'broken': { text: 'לא כשיר', class: 'status-broken' },
   'repair': { text: 'בתיקון', class: 'status-repair' },
   'loaned': { text: 'בפעילות', class: 'status-loaned' },
-  'missing': { text: 'חסר', class: 'status-missing' }
+  'missing': { text: 'חסר', class: 'status-missing' },
+  'borrowed': { text: 'ציוד מושאל', class: 'status-borrowed' }
 };
 
 const EquipmentItemRow: React.FC<EquipmentItemRowProps> = ({ item, onClick, isSelectable, isSelected, onToggle, onOpenSubItems, onLongPress, isDemoWarehouse, isDemoReadOnly }) => {

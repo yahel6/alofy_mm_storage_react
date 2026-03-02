@@ -12,7 +12,8 @@ import {
     addMembersToGroup,
     promoteToAdmin,
     demoteFromAdmin,
-    updateUserSeenRequests
+    updateUserSeenRequests,
+    requestToJoinGroup
 } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
 import CustomSelect from '../components/CustomSelect';
@@ -79,12 +80,63 @@ const GroupManagementPage: React.FC = () => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '10px'
+                                gap: '10px',
+                                marginBottom: '16px'
                             }}
                         >
                             <span>➕</span>
                             צור קבוצה חדשה
                         </button>
+
+                        {/* בקשה להצטרף לקבוצה קיימת */}
+                        <div style={{
+                            background: 'var(--bg-secondary)',
+                            borderRadius: '16px',
+                            padding: '20px',
+                            border: '1px solid #333'
+                        }}>
+                            <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem' }}>בקש להצטרף לקבוצה קיימת</h3>
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                                {groups && groups
+                                    .filter(g => !g.members.includes(currentUser?.uid || ''))
+                                    .map(group => {
+                                        const isPending = group.pendingRequests?.includes(currentUser?.uid || '');
+                                        return (
+                                            <div key={group.id} style={{
+                                                padding: '12px',
+                                                background: 'var(--card-bg-color)',
+                                                borderRadius: '12px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                border: '1px solid #222'
+                                            }}>
+                                                <span style={{ fontWeight: 500 }}>{group.name}</span>
+                                                <button
+                                                    onClick={() => currentUser && !isOffline && requestToJoinGroup(group.id, currentUser.uid)}
+                                                    disabled={isPending || isOffline}
+                                                    style={{
+                                                        padding: '8px 16px',
+                                                        borderRadius: '8px',
+                                                        border: 'none',
+                                                        background: (isPending || isOffline) ? '#333' : 'var(--action-color)',
+                                                        color: (isPending || isOffline) ? '#777' : 'white',
+                                                        cursor: (isPending || isOffline) ? 'default' : 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: 600
+                                                    }}
+                                                >
+                                                    {isPending ? 'נשלחה בקשה' : isOffline ? 'אופליין' : 'בקש להצטרף'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                }
+                                {groups && groups.filter(g => !g.members.includes(currentUser?.uid || '')).length === 0 && (
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', margin: 0 }}>אין קבוצות נוספות זמינות להצטרפות.</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
 

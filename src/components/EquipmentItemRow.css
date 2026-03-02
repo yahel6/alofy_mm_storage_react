@@ -128,6 +128,15 @@
     background-color: var(--status-grey);
 }
 
+.equipment-status.status-borrowed {
+    color: var(--status-orange);
+    background-color: rgba(255, 149, 0, 0.1);
+}
+
+.equipment-status.status-borrowed .status-dot {
+    background-color: var(--status-orange);
+}
+
 .equipment-status.status-missing {
     color: var(--status-red);
     background-color: rgba(255, 59, 48, 0.1);

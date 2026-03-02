@@ -1,10 +1,24 @@
-import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove, query, where, getDocs, arrayUnion } from 'firebase/firestore';
-import { db } from './firebaseConfig';
+import { doc, updateDoc, deleteDoc, addDoc, getDoc, collection, writeBatch, arrayRemove, query, where, getDocs, arrayUnion, setDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { db, auth } from './firebaseConfig';
 import type { EquipmentItem, Activity, Warehouse, Group, AppUser, SimpleEquipmentItem } from './types';
 
+/**
+ * Signs out the current user.
+ */
+export const signOutUser = async () => {
+  try {
+    await signOut(auth);
+    return true;
+  } catch (error) {
+    console.error("Error signing out:", error);
+    return false;
+  }
+};
+
 // סוגי הסטטוסים האפשריים לפריט (לפי סדר עדיפויות חומרה)
-export type EquipmentStatus = 'broken' | 'missing' | 'repair' | 'charging' | 'loaned' | 'available';
-const STATUS_PRIORITY: EquipmentStatus[] = ['broken', 'missing', 'repair', 'charging', 'loaned', 'available'];
+export type EquipmentStatus = 'broken' | 'missing' | 'repair' | 'charging' | 'loaned' | 'available' | 'borrowed';
+const STATUS_PRIORITY: EquipmentStatus[] = ['broken', 'missing', 'repair', 'charging', 'loaned', 'available', 'borrowed'];
 
 /**
  * מחשב את הסטטוס הנגזר של פריט על פי תתי-הפריטים שלו
@@ -1453,3 +1467,168 @@ export const removeInternalEquipment = async (itemId: string, subItemId: string)
   }
 };
 
+/**
+ * Sends a message in the support chat.
+ */
+export const sendSupportMessage = async (userId: string, userName: string, text: string, senderRole: 'user' | 'admin') => {
+  const chatRef = doc(db, 'support_chats', userId);
+  const timestamp = new Date().toISOString();
+
+  const newMessage = {
+    senderId: senderRole === 'admin' ? 'admin' : userId,
+    text: text.trim(),
+    timestamp
+  };
+
+  try {
+    const snap = await getDoc(chatRef);
+    if (!snap.exists()) {
+      // Create new chat
+      await setDoc(chatRef, {
+        id: userId,
+        userId,
+        userName,
+        messages: [newMessage],
+        lastMessageTimestamp: timestamp,
+        hasUnreadAdmin: senderRole === 'user',
+        hasUnreadUser: senderRole === 'admin'
+      });
+    } else {
+      // Update existing chat
+      await updateDoc(chatRef, {
+        messages: arrayUnion(newMessage),
+        lastMessageTimestamp: timestamp,
+        hasUnreadAdmin: senderRole === 'user' ? true : snap.data().hasUnreadAdmin,
+        hasUnreadUser: senderRole === 'admin' ? true : snap.data().hasUnreadUser,
+        userName // Update name in case it changed
+      });
+    }
+    return true;
+  } catch (error) {
+    console.error("Error sending support message:", error);
+    return false;
+  }
+};
+
+/**
+ * Marks a support chat as read by the specified role.
+ */
+export const markSupportRead = async (userId: string, role: 'user' | 'admin') => {
+  const chatRef = doc(db, 'support_chats', userId);
+  try {
+    await updateDoc(chatRef, {
+      [role === 'admin' ? 'hasUnreadAdmin' : 'hasUnreadUser']: false
+    });
+    return true;
+  } catch (error) {
+    console.error("Error marking support read:", error);
+    return false;
+  }
+};
+
+/**
+ * Initiates a loan request for multiple items.
+ * Sets the items to 'pending_borrow' status.
+ */
+export const bulkLoanItems = async (itemIds: string[], originGroupId: string, originWarehouseId: string, targetGroupId: string, targetWarehouseId: string) => {
+  const batch = writeBatch(db);
+  const timestamp = new Date().toISOString();
+
+  itemIds.forEach(id => {
+    const ref = doc(db, 'equipment', id);
+    batch.update(ref, {
+      loanInfo: {
+        originGroupId,
+        originWarehouseId,
+        targetGroupId,
+        targetWarehouseId,
+        status: 'pending_borrow'
+      },
+      lastCheckDate: timestamp.split('T')[0]
+    });
+  });
+
+  try {
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("Error initiating bulk loan:", error);
+    return false;
+  }
+};
+
+/**
+ * Approves an incoming loan request.
+ * Moves items to the target warehouse and sets status to 'borrowed'.
+ */
+export const approveLoan = async (itemIds: string[], targetWarehouseId: string) => {
+  const batch = writeBatch(db);
+  const timestamp = new Date().toISOString();
+
+  itemIds.forEach(id => {
+    const ref = doc(db, 'equipment', id);
+    batch.update(ref, {
+      warehouseId: targetWarehouseId,
+      status: 'borrowed',
+      'loanInfo.status': 'active',
+      lastCheckDate: timestamp.split('T')[0]
+    });
+  });
+
+  try {
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("Error approving loan:", error);
+    return false;
+  }
+};
+
+/**
+ * Initiates the return of borrowed items.
+ * Sets loan status to 'pending_return'.
+ */
+export const initiateLoanReturn = async (itemIds: string[]) => {
+  const batch = writeBatch(db);
+  itemIds.forEach(id => {
+    const ref = doc(db, 'equipment', id);
+    batch.update(ref, {
+      'loanInfo.status': 'pending_return'
+    });
+  });
+
+  try {
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("Error initiating loan return:", error);
+    return false;
+  }
+};
+
+/**
+ * Approves the return of items to their original warehouse.
+ */
+export const approveLoanReturn = async (items: EquipmentItem[]) => {
+  const batch = writeBatch(db);
+  const timestamp = new Date().toISOString();
+
+  items.forEach(item => {
+    if (!item.loanInfo) return;
+    const ref = doc(db, 'equipment', item.id);
+    batch.update(ref, {
+      warehouseId: item.loanInfo.originWarehouseId,
+      status: 'available', // Restore to available
+      loanInfo: null, // Clear loan info
+      lastCheckDate: timestamp.split('T')[0]
+    });
+  });
+
+  try {
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("Error approving loan return:", error);
+    return false;
+  }
+};

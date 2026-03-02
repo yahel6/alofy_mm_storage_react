@@ -2,20 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
-import { updateUserProfile, requestToJoinGroup } from '../firebaseUtils';
+import { updateUserProfile, requestToJoinGroup, sendSupportMessage, markSupportRead, signOutUser } from '../firebaseUtils';
 import HeaderNav from '../components/HeaderNav';
+import { useDialog } from '../contexts/DialogContext';
 import CustomSelect from '../components/CustomSelect';
+import InstallPrompt from '../components/InstallPrompt';
 import '../components/Form.css';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { currentUser, users, groups } = useDatabase();
     const { isOffline } = useOffline();
+    const { showConfirm } = useDialog();
     // We get the full user object from the database context to ensure we have the latest display name
     const [displayName, setDisplayName] = useState('');
     const [dominantGroupId, setDominantGroupId] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const { supportChats } = useDatabase();
+    const [supportMsg, setSupportMsg] = useState('');
+    const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(null);
+
+    const userChat = supportChats.find(c => c.id === currentUser?.uid);
+    const selectedChat = supportChats.find(c => c.id === selectedChatUserId);
+
 
     useEffect(() => {
         if (currentUser) {
@@ -46,6 +56,42 @@ const ProfilePage: React.FC = () => {
         setLoading(false);
     };
 
+    const handleSendSupport = async (e: React.FormEvent, targetUserId?: string) => {
+        e.preventDefault();
+        if (!currentUser || !supportMsg.trim()) return;
+
+        const userId = targetUserId || currentUser.uid;
+        const role = currentUser.role === 'admin' ? 'admin' : 'user';
+
+        const success = await sendSupportMessage(userId, displayName || currentUser.displayName || 'משתמש', supportMsg, role);
+        if (success) {
+            setSupportMsg('');
+        } else {
+            console.error("Failed to send support message");
+            // Optionally notify user
+        }
+    };
+
+    const openChat = (userId: string) => {
+        setSelectedChatUserId(userId);
+        markSupportRead(userId, 'admin');
+    };
+
+    useEffect(() => {
+        if (userChat?.hasUnreadUser && currentUser) {
+            markSupportRead(currentUser.uid, 'user');
+        }
+    }, [userChat?.hasUnreadUser, currentUser]);
+
+    const handleLogout = async () => {
+        const confirmed = await showConfirm('האם אתה בטוח שברצונך להחליף משתמש?', 'החלפת משתמש');
+        if (confirmed) {
+            await signOutUser();
+            navigate('/login');
+        }
+    };
+
+
     return (
         <div>
             <HeaderNav title="פרופיל אישי" />
@@ -67,7 +113,28 @@ const ProfilePage: React.FC = () => {
                         }}>
                             {displayName.charAt(0).toUpperCase()}
                         </div>
-                        <div style={{ color: '#aaa', overflowWrap: 'anywhere' }}>{currentUser?.email}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#aaa' }}>
+                            <span style={{ overflowWrap: 'anywhere' }}>{currentUser?.email}</span>
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid #666',
+                                    color: '#ccc',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.75em',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                החלף משתמש
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <InstallPrompt />
                     </div>
 
                     <div className="form-group">
@@ -252,8 +319,119 @@ const ProfilePage: React.FC = () => {
                         )}
                     </div>
                 </div>
+
+                <div style={{ maxWidth: '500px', margin: '40px auto 0', borderTop: '2px solid var(--action-color)', paddingTop: '24px', paddingBottom: '40px' }}>
+                    <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>💬 תן משוב על האפליקציה</span>
+                    </h3>
+
+                    {currentUser?.role === 'admin' ? (
+                        <div style={{ background: 'var(--card-bg-color)', borderRadius: '12px', padding: '16px', border: '1px solid #444' }}>
+                            <h4 style={{ marginTop: 0, marginBottom: '12px', fontSize: '1rem' }}>שיחות פתוחות</h4>
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                                {supportChats.length > 0 ? (
+                                    supportChats
+                                        .sort((a, b) => (b.lastMessageTimestamp || '').localeCompare(a.lastMessageTimestamp || ''))
+                                        .map(chat => (
+                                            <div
+                                                key={chat.id}
+                                                onClick={() => openChat(chat.id)}
+                                                style={{
+                                                    padding: '12px',
+                                                    background: selectedChatUserId === chat.id ? 'rgba(var(--action-color-rgb), 0.1)' : 'var(--bg-secondary)',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    border: chat.hasUnreadAdmin ? '1px solid var(--status-red)' : '1px solid transparent'
+                                                }}
+                                            >
+                                                <div style={{ fontWeight: chat.hasUnreadAdmin ? 'bold' : 'normal' }}>
+                                                    {chat.userName}
+                                                    {chat.hasUnreadAdmin && <span style={{ color: 'var(--status-red)', marginRight: '8px' }}>●</span>}
+                                                </div>
+                                                <small style={{ color: '#888' }}>
+                                                    {chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp).toLocaleDateString() : ''}
+                                                </small>
+                                            </div>
+                                        ))
+                                ) : (
+                                    <p style={{ color: '#888', textAlign: 'center' }}>אין שיחות פעילות.</p>
+                                )}
+                            </div>
+
+                            {selectedChat && (
+                                <div style={{ marginTop: '20px', borderTop: '1px solid #444', paddingTop: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                        <h4 style={{ margin: 0 }}>שיחה עם {selectedChat.userName}</h4>
+                                        <button onClick={() => setSelectedChatUserId(null)} style={{ background: 'none', border: 'none', color: '#ff3b30', cursor: 'pointer' }}>סגור</button>
+                                    </div>
+                                    <div style={{ height: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {selectedChat.messages.map((m, idx) => (
+                                            <div key={idx} style={{
+                                                alignSelf: m.senderId === 'admin' ? 'flex-start' : 'flex-end',
+                                                background: m.senderId === 'admin' ? '#444' : 'var(--action-color)',
+                                                color: 'white',
+                                                padding: '8px 12px',
+                                                borderRadius: '12px',
+                                                maxWidth: '80%',
+                                                fontSize: '0.9rem'
+                                            }}>
+                                                {m.text}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <form onSubmit={(e) => handleSendSupport(e, selectedChat.userId)} style={{ display: 'flex', gap: '8px' }}>
+                                        <input
+                                            type="text"
+                                            value={supportMsg}
+                                            onChange={(e) => setSupportMsg(e.target.value)}
+                                            placeholder="שלח תשובה..."
+                                            style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#333', border: '1px solid #555', color: 'white' }}
+                                        />
+                                        <button type="submit" className="btn-primary" style={{ width: 'auto', margin: 0, padding: '0 16px' }}>שלח</button>
+                                    </form>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{ background: 'var(--card-bg-color)', borderRadius: '12px', padding: '16px', border: '1px solid #444' }}>
+                            <div style={{ height: '250px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {userChat && userChat.messages.length > 0 ? (
+                                    userChat.messages.map((m, idx) => (
+                                        <div key={idx} style={{
+                                            alignSelf: m.senderId === currentUser?.uid ? 'flex-end' : 'flex-start',
+                                            background: m.senderId === currentUser?.uid ? 'var(--action-color)' : '#444',
+                                            color: 'white',
+                                            padding: '8px 12px',
+                                            borderRadius: '12px',
+                                            maxWidth: '80%',
+                                            position: 'relative'
+                                        }}>
+                                            {m.text}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p style={{ color: '#888', textAlign: 'center', marginTop: '40px' }}>שלח הודעה לאדמינים ונחזור אליך בהקדם.</p>
+                                )}
+                            </div>
+                            <form onSubmit={handleSendSupport} style={{ display: 'flex', gap: '8px' }}>
+                                <input
+                                    type="text"
+                                    value={supportMsg}
+                                    onChange={(e) => setSupportMsg(e.target.value)}
+                                    placeholder="כתוב משוב או שאלה על המערכת..."
+                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#333', border: '1px solid #555', color: 'white' }}
+                                />
+                                <button type="submit" className="btn-primary" style={{ width: 'auto', margin: 0, padding: '0 16px' }}>שלח</button>
+                            </form>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
+
     );
 };
 

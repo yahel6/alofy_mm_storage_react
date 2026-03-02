@@ -1,11 +1,13 @@
-// src/pages/HomePage.tsx
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useTour } from '@reactour/tour';
 import HeaderNav from '../components/HeaderNav';
 import LoadingScreen from '../components/LoadingScreen';
 import InstallPrompt from '../components/InstallPrompt';
+import { approveLoan, approveLoanReturn } from '../firebaseUtils';
+import type { EquipmentItem } from '../types';
 import './HomePage.css';
 
 const CompetencesIcon = () => (
@@ -14,8 +16,6 @@ const CompetencesIcon = () => (
   </svg>
 );
 
-
-// פונקציית עזר לפורמט תאריך (ללא שינוי)
 const formatActivityDate = (dateString: string) => {
   const date = new Date(dateString);
   const today = new Date();
@@ -32,9 +32,10 @@ const formatActivityDate = (dateString: string) => {
 };
 
 function HomePage() {
-  const { currentUser, equipment, activities, competences, competenceRecords, isLoading } = useDatabase();
+  const { currentUser, equipment, activities, competences, competenceRecords, isLoading, warehouses, groups } = useDatabase();
   const navigate = useNavigate();
   const { setIsOpen } = useTour();
+  const [showLoansModal, setShowLoansModal] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -48,23 +49,22 @@ function HomePage() {
     }
   }, [currentUser, setIsOpen]);
 
-  // --- 1. עדכון חישוב נתוני "דורש טיפול" ---
   const attentionItems = useMemo(() => {
-    // תאריך הסף יוערך פר פריט (לפי item.validationDays)
     const today = new Date();
-
     let broken = 0;
     let repair = 0;
-    let loaned = 0;
     let needsValidation = 0;
+    let loanAlerts = 0;
 
     equipment.forEach(item => {
-      // ספירת סטטוסים
+      if (item.loanInfo) {
+        const isIncoming = item.loanInfo.status === 'pending_borrow' && currentUser?.groupIds?.includes(item.loanInfo.targetGroupId);
+        const isReturning = item.loanInfo.status === 'pending_return' && currentUser?.groupIds?.includes(item.loanInfo.originGroupId);
+        if (isIncoming || isReturning) loanAlerts++;
+      }
       if (item.status === 'broken') broken++;
       if (item.status === 'repair') repair++;
-      if (item.status === 'loaned') loaned++;
 
-      // ספירת ווידוא (רק פריטים שהמשתמש אחראי עליהם)
       const validateThreshold = new Date(today);
       validateThreshold.setDate(validateThreshold.getDate() - (item.validationDays ?? 7));
 
@@ -75,10 +75,8 @@ function HomePage() {
       }
     });
 
-    // --- חישוב כשירויות פגות/קרובות (צהוב ואדום) ---
     let competencesAlerts = 0;
     if (currentUser) {
-      // סינון כשירויות רלוונטיות למשתמש
       const userCompetences = competences.filter(c =>
         c.userIds.includes(currentUser.uid) &&
         currentUser.groupIds?.includes(c.groupId)
@@ -87,42 +85,46 @@ function HomePage() {
       userCompetences.forEach(comp => {
         const record = competenceRecords.find(r => r.competenceId === comp.id && r.userId === currentUser.uid);
         if (!record) {
-          // אין רקורד = פג תוקף (אדום)
           competencesAlerts++;
         } else {
           const expDate = new Date(record.expirationDate);
           const daysLeft = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
-
-          if (daysLeft <= 0) {
-            // אדום
-            competencesAlerts++;
-          } else if (daysLeft <= 3) {
-            // צהוב
-            competencesAlerts++;
-          }
+          if (daysLeft <= 3) competencesAlerts++;
         }
       });
     }
 
-    const items = [
-      // --- הוספת השורה החדשה לכשירויות (תופיע ראשונה) ---
+    return [
       { id: 'competences', text: 'כשירויות', icon: <CompetencesIcon />, iconClass: 'icon-green', count: competencesAlerts, path: '/competences?tab=my', showBadge: competencesAlerts > 0 },
-      // --- שאר השורות ---
       { id: 'validate', text: 'פריטים דורשי ווידוא', icon: '🗓️', iconClass: 'icon-orange', count: needsValidation, path: '/items/filter/validate' },
       { id: 'broken', text: 'פריטים לא כשירים', icon: '!', iconClass: 'icon-red', count: broken, path: '/items/filter/broken' },
       { id: 'repair', text: 'פריטים בתיקון', icon: '🔧', iconClass: 'icon-orange', count: repair, path: '/items/filter/repair' },
-      { id: 'loaned', text: 'השאלות שטרם הוחזרו', icon: '→', iconClass: 'icon-orange', count: loaned, path: '/items/filter/loaned' }
+      { id: 'loans_active', text: 'מרכז השאלות', icon: '📦', iconClass: 'icon-blue', count: loanAlerts, path: '#loans', showBadge: loanAlerts > 0 }
     ];
-
-    return items;
   }, [equipment, competences, competenceRecords, currentUser]);
-  // --- סוף העדכון ---
 
-  // חישוב "פעילויות קרובות" (ללא שינוי)
+  const { pendingIncoming, pendingReturns, lentOut, borrowedIn } = useMemo(() => {
+    const userGroups = currentUser?.groupIds || [];
+    return {
+      pendingIncoming: equipment.filter(e => e.loanInfo?.status === 'pending_borrow' && userGroups.includes(e.loanInfo.targetGroupId)),
+      pendingReturns: equipment.filter(e => e.loanInfo?.status === 'pending_return' && userGroups.includes(e.loanInfo.originGroupId)),
+      lentOut: equipment.filter(e => e.loanInfo?.status === 'active' && userGroups.includes(e.loanInfo.originGroupId)),
+      borrowedIn: equipment.filter(e => e.loanInfo?.status === 'active' && userGroups.includes(e.loanInfo.targetGroupId))
+    };
+  }, [equipment, currentUser]);
+
+  const handleApproveLoan = async (item: EquipmentItem) => {
+    if (!item.loanInfo) return;
+    await approveLoan([item.id], item.loanInfo.targetWarehouseId);
+  };
+
+  const handleConfirmReturn = async (item: EquipmentItem) => {
+    await approveLoanReturn([item]);
+  };
+
   const upcomingActivities = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     return activities
       .filter(act => new Date(act.date) >= today)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -130,6 +132,10 @@ function HomePage() {
   }, [activities]);
 
   const handleAttentionClick = (path: string) => {
+    if (path === '#loans') {
+      setShowLoansModal(true);
+      return;
+    }
     navigate(path);
   };
 
@@ -146,13 +152,11 @@ function HomePage() {
           <p className="welcome-subtitle">הנה מה שקורה היום במחסן</p>
         </div>
 
-        {/* --- כרטיס "דורש טיפול" --- */}
         <div className="dashboard-card" id="attention-card">
           <div className="card-header">
             <h2 className="card-title">דורש טיפול</h2>
           </div>
           <div className="card-content">
-            {/* 2. הרשימה תרונדר אוטומטית עם הפריט החדש שנוסף */}
             {attentionItems.map(item => (
               <div
                 key={item.id}
@@ -176,7 +180,6 @@ function HomePage() {
           </div>
         </div>
 
-        {/* --- כרטיס "פעילויות קרובות" (ללא שינוי) --- */}
         <div className="dashboard-card" id="upcoming-card">
           <div className="card-header">
             <h2 className="card-title">פעילויות קרובות</h2>
@@ -219,9 +222,122 @@ function HomePage() {
           </div>
         </div>
 
+        <AnimatePresence>
+          {showLoansModal && (
+            <motion.div
+              className="modal-overlay active"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLoansModal(false)}
+            >
+              <motion.div
+                className="modal-container-tech"
+                initial={{ scale: 0.9, opacity: 0, y: 30 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 30 }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="modal-header-tech">
+                  <div className="header-icon-hex">
+                    <span className="icon-pulse">📦</span>
+                  </div>
+                  <div className="header-text-group">
+                    <h3 className="modal-title-tech">מרכז השאלות</h3>
+                    <p className="modal-subtitle-tech">ניהול וניטור ציוד בין קבוצות</p>
+                  </div>
+                </div>
+
+                <div className="loan-dashboard-content-scroll">
+                  {pendingIncoming.length > 0 && (
+                    <div className="loan-grid-section">
+                      <h4 className="section-label incoming">
+                        <span className="dot"></span>
+                        חבילות שהגיעו (לאישור קבלה)
+                      </h4>
+                      <div className="loan-cards-stack">
+                        {pendingIncoming.map(item => (
+                          <div key={item.id} className="loan-tech-card">
+                            <div className="card-top">
+                              <span className="item-name-tech">{item.name}</span>
+                              <span className="source-label">נשלח מ: {warehouses.find(w => w.id === item.loanInfo?.originWarehouseId)?.name || '...'}</span>
+                            </div>
+                            <div className="card-bottom">
+                              <span className="group-info">קבוצה: {groups.find(g => g.id === item.loanInfo?.originGroupId)?.name || '...'}</span>
+                              <button className="btn-tech approve" onClick={() => handleApproveLoan(item)}>אשר קבלה</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {pendingReturns.length > 0 && (
+                    <div className="loan-grid-section">
+                      <h4 className="section-label return">
+                        <span className="dot"></span>
+                        ציוד חזרה (לאישור פיזי)
+                      </h4>
+                      <div className="loan-cards-stack">
+                        {pendingReturns.map(item => (
+                          <div key={item.id} className="loan-tech-card">
+                            <div className="card-top">
+                              <span className="item-name-tech">{item.name}</span>
+                              <span className="source-label">הוחזר מ: {warehouses.find(w => w.id === item.loanInfo?.targetWarehouseId)?.name || '...'}</span>
+                            </div>
+                            <div className="card-bottom">
+                              <span className="group-info">קבוצה: {groups.find(g => g.id === item.loanInfo?.targetGroupId)?.name || '...'}</span>
+                              <button className="btn-tech confirm" onClick={() => handleConfirmReturn(item)}>אשר קבלת ציוד</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="loan-summary-row">
+                    <div className="summary-section">
+                      <h5 className="summary-header">📤 פריטים שהשאלנו</h5>
+                      <div className="summary-list">
+                        {lentOut.length === 0 ? <p className="empty-state-text">אין פריטים מושאלים</p> : (lentOut as EquipmentItem[]).map(item => (
+                          <div key={item.id} className="summary-item">
+                            <span className="indicator lent"></span>
+                            <span className="name">{item.name}</span>
+                            <span className="arrow">←</span>
+                            <span className="target">{groups.find(g => g.id === item.loanInfo?.targetGroupId)?.name || '...'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="summary-section">
+                      <h5 className="summary-header">📥 פריטים בשימושנו</h5>
+                      <div className="summary-list">
+                        {borrowedIn.length === 0 ? <p className="empty-state-text">אין פריטים שאולים</p> : (borrowedIn as EquipmentItem[]).map(item => (
+                          <div key={item.id} className="summary-item">
+                            <span className="indicator borrowed"></span>
+                            <span className="name">{item.name}</span>
+                            <span className="arrow">←</span>
+                            <span className="target">{groups.find(g => g.id === item.loanInfo?.originGroupId)?.name || '...'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer-tech">
+                  <button className="btn-tech-close" onClick={() => setShowLoansModal(false)}>סגור מרכז בקרה</button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <InstallPrompt />
       </div>
     </div>
   );
 }
+
 export default HomePage;

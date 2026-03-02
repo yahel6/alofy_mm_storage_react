@@ -52,7 +52,7 @@ export interface EquipmentComment {
 }
 
 // סוגי הסטטוסים האפשריים לפריט
-export type EquipmentStatus = 'available' | 'charging' | 'broken' | 'repair' | 'loaned' | 'missing';
+export type EquipmentStatus = 'available' | 'charging' | 'broken' | 'repair' | 'loaned' | 'missing' | 'borrowed';
 
 // טיפוס פריט ציוד
 export interface EquipmentItem {
@@ -73,6 +73,14 @@ export interface EquipmentItem {
   /** כל כמה ימים צריך לוודא את הציוד (ברירת מחדל 7) */
   validationDays?: number;
   comments?: EquipmentComment[];
+  /** מידע על השאלה בין מחסנים */
+  loanInfo?: {
+    originWarehouseId: string;
+    originGroupId: string;
+    targetWarehouseId: string;
+    targetGroupId: string;
+    status: 'pending_borrow' | 'active' | 'pending_return';
+  };
 }
 
 export interface SubItem {
@@ -126,3 +134,20 @@ export interface CompetenceRecord {
   lastPerformedDate: string;
   expirationDate: string; // lastPerformedDate + renewalDays
 }
+
+export interface SupportMessage {
+  senderId: string; // userId or 'admin'
+  text: string;
+  timestamp: string;
+}
+
+export interface SupportChat {
+  id: string; // This will be the userId
+  userId: string;
+  userName: string;
+  messages: SupportMessage[];
+  lastMessageTimestamp: string;
+  hasUnreadAdmin: boolean;
+  hasUnreadUser: boolean;
+}
+

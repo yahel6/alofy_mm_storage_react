@@ -22,8 +22,21 @@ import {
   bulkCopyItemsToWarehouse,
   bulkAssignItemsToActivity,
   updateGroupStatusByQuantity,
-  bulkUpdateValidationDays
+  bulkUpdateValidationDays,
+  bulkLoanItems,
+  initiateLoanReturn
 } from '../firebaseUtils';
+
+const statusOptions = [
+  { id: 'available', label: 'כשיר', dotClass: 'available' },
+  { id: 'charging', label: 'בטעינה', dotClass: 'charging' },
+  { id: 'repair', label: 'בתיקון', dotClass: 'repair' },
+  { id: 'broken', label: 'לא כשיר', dotClass: 'broken' },
+  { id: 'missing', label: 'חסר', dotClass: 'missing' },
+  { id: 'loaned', label: 'בפעילות', dotClass: 'loaned' },
+  { id: 'borrowed', label: 'ציוד מושאל', dotClass: 'borrowed' },
+] as const;
+
 import type { EquipmentItem } from '../types';
 import '../components/Modal.css'; // Import generic modal styles
 import QuantityModal from '../components/QuantityModal';
@@ -34,7 +47,7 @@ function WarehouseDetailsPage() {
   const { warehouseId } = useParams<{ warehouseId: string }>();
   const scopeId = warehouseId || 'unknown_warehouse';
 
-  const { warehouses, equipment, users, activities, isLoading, currentUser } = useDatabase();
+  const { warehouses, equipment, users, activities, isLoading, currentUser, groups } = useDatabase();
   const { isOffline } = useOffline();
   const isUserAdmin = currentUser?.role === 'admin';
   const { startSession, stopSession, isSessionActive, getSessionVerifiedItems, verifyItem } = useValidation();
@@ -59,9 +72,11 @@ function WarehouseDetailsPage() {
   // Grouping State
   const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
 
+  // סוגי הסטטוסים האפשריים לפריט (לפי סדר עדיפויות חומרה)
   // Bulk Action Modals State
-  const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'copy' | 'activity' | 'category' | 'validationDays' | null>(null);
+  const [bulkAction, setBulkAction] = useState<'status' | 'move' | 'copy' | 'activity' | 'category' | 'validationDays' | 'loan' | 'returnLoan' | null>(null);
   const [tempSelection, setTempSelection] = useState<string>(''); // For storing the selected Status/WarehouseId/ActivityId
+  const [tempTargetGroupId, setTempTargetGroupId] = useState<string>(''); // For loan target group
 
   // State for splitting
   const [splitCandidateGroup, setSplitCandidateGroup] = useState<EquipmentItem[] | null>(null);
@@ -92,26 +107,30 @@ function WarehouseDetailsPage() {
     setSplitCandidateGroup(null);
   };
 
-  const performActionOnIds = async (ids: string[]) => {
+  const performActionOnIds = async (ids: string[], currentTempSelection?: string, actionOverride?: typeof bulkAction) => {
+    const activeSelection = currentTempSelection || tempSelection;
+    const activeAction = actionOverride || bulkAction;
     let success = false;
     try {
-      if (bulkAction === 'category') {
-        success = await bulkUpdateCategory(ids, tempSelection || null);
-      } else if (bulkAction === 'status') {
-        success = await bulkUpdateStatus(ids, tempSelection as any);
-      } else if (bulkAction === 'move') {
-        success = await bulkMoveItemsToWarehouse(ids, tempSelection);
-      } else if (bulkAction === 'activity') {
-        success = await bulkAssignItemsToActivity(ids, tempSelection);
-      } else if (bulkAction === 'copy') {
-        success = await bulkCopyItemsToWarehouse(ids, tempSelection);
-      } else if (bulkAction === 'validationDays') {
-        const days = parseInt(tempSelection, 10);
+      if (activeAction === 'category') {
+        success = await bulkUpdateCategory(ids, activeSelection || null);
+      } else if (activeAction as any === 'status') {
+        success = await bulkUpdateStatus(ids, activeSelection as any);
+      } else if (activeAction as any === 'move') {
+        success = await bulkMoveItemsToWarehouse(ids, activeSelection);
+      } else if (activeAction as any === 'activity') {
+        success = await bulkAssignItemsToActivity(ids, activeSelection);
+      } else if (activeAction as any === 'copy') {
+        success = await bulkCopyItemsToWarehouse(ids, activeSelection);
+      } else if (activeAction === 'validationDays') {
+        const days = parseInt(activeSelection, 10);
         if (days > 0) {
           success = await bulkUpdateValidationDays(ids, days);
-        } else {
-          success = false;
         }
+      } else if (activeAction as any === 'loan') {
+        success = await bulkLoanItems(ids, warehouse?.groupId || '', warehouse?.id || '', tempTargetGroupId, activeSelection);
+      } else if (activeAction as any === 'returnLoan') {
+        success = await initiateLoanReturn(ids);
       }
     } catch (err) {
       console.error("Error in performActionOnIds:", err);
@@ -157,7 +176,6 @@ function WarehouseDetailsPage() {
       const confirmed = await showConfirm(`האם לוודא תקינות ל-${selectedItemIds.size} פריטים?`, 'אימות קבוצתי');
       if (confirmed) {
         await bulkValidateItems(ids);
-        await showAlert('הפריטים אומתו בהצלחה (תאריך בדיקה עודכן להיום).');
       }
     }
 
@@ -371,22 +389,21 @@ function WarehouseDetailsPage() {
     } else if (bulkAction === 'status') {
       title = 'שינוי סטטוס';
       content = (
-        <CustomSelect
-          value={tempSelection}
-          onChange={setTempSelection}
-          options={[
-            { value: "available", label: "כשיר" },
-            { value: "charging", label: "בטעינה" },
-            { value: "repair", label: "בתיקון" },
-            { value: "broken", label: "לא כשיר" },
-            { value: "missing", label: "חסר" },
-            { value: "loaned", label: "בפעילות" },
-          ]}
-          placeholder="בחר סטטוס..."
-        />
+        <div className="modal-options" style={{ background: '#333' }}>
+          {statusOptions.map(opt => (
+            <div
+              key={opt.id}
+              onClick={() => setTempSelection(opt.id)}
+              style={{ borderBottom: '1px solid #444', background: tempSelection === opt.id ? 'rgba(var(--action-color-rgb), 0.1)' : 'transparent' }}
+            >
+              <span className={`status-dot ${opt.dotClass}`}></span> {opt.label}
+              {tempSelection === opt.id && <span style={{ marginRight: 'auto', color: 'var(--action-color)' }}>✓</span>}
+            </div>
+          ))}
+        </div>
       );
     } else if (bulkAction === 'move') {
-      title = 'העברה למחסן אחר';
+      title = 'העברה למחסן אחר (יורד מהמחסן המקורי)';
       content = (
         <CustomSelect
           value={tempSelection}
@@ -415,18 +432,30 @@ function WarehouseDetailsPage() {
           placeholder="בחר פעילות..."
         />
       );
-    } else if (bulkAction === 'validationDays') {
-      title = 'ימי וידוא נדרשים';
+    } else if (bulkAction === 'loan') {
+      title = 'השאל ציוד זמנית למחסן אחר';
       content = (
-        <input
-          type="number"
-          className="form-select"
-          value={tempSelection}
-          onChange={e => setTempSelection(e.target.value)}
-          placeholder="הכנס מספר ימים (ברירת מחדל 7)..."
-          min="1"
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '14px', color: '#888' }}>בחר מחסן יעד להשאלה:</p>
+          <CustomSelect
+            value={tempSelection}
+            onChange={(val) => {
+              setTempSelection(val);
+              const targetW = warehouses.find(w => w.id === val);
+              if (targetW) setTempTargetGroupId(targetW.groupId);
+            }}
+            options={warehouses.filter(w => w.id !== warehouseId && !w.isDemo).map(w => ({
+              value: w.id,
+              label: `${w.name} (${groups.find(g => g.id === w.groupId)?.name || 'ללא קבוצה'})`
+            }))}
+            placeholder="בחר מחסן..."
+          />
+        </div>
       );
+    }
+    else if (bulkAction === 'returnLoan') {
+      title = 'החזר השאלה';
+      content = <p>האם ברצונך לבקש להחזיר את הציוד למחסן המקורי?</p>;
     }
 
     return (
@@ -593,20 +622,40 @@ function WarehouseDetailsPage() {
                 <button className="bulk-btn" onClick={handleBulkValidate}>✅ ווידוא</button>
               )}
 
-              {/* Full actions — only shown to admins in demo warehouse */}
               {!isValidationMode && !isDemoReadOnly && (
                 <>
-                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('status'); }}>🔄 סטטוס</button>
-                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('category'); }}>🏷️ קטגוריה</button>
-                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('move'); }}>📦 העברה</button>
                   <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('activity'); }}>📌 לפעילות</button>
-                  <button className="bulk-btn" onClick={() => { setTempSelection('7'); setBulkAction('validationDays'); }}>⏱️ זמן וידוא</button>
+                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('category'); }}>🏷️ קטגוריה</button>
+                  <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('status'); }}>🔄 סטטוס</button>
                 </>
               )}
 
               {/* Copy — always available */}
               {!isValidationMode && (
                 <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('copy'); }}>📋 העתקה</button>
+              )}
+
+              {/* Loan actions */}
+              {!isValidationMode && !isDemoReadOnly && (
+                <>
+                  {Array.from(selectedItemIds).every(id => equipment.find(e => e.id === id)?.status === 'borrowed') ? (
+                    <button className="bulk-btn" onClick={async () => {
+                      const confirmed = await showConfirm('האם ברצונך לבקש להחזיר את הציוד למחסן המקורי?', 'החזרת השאלה');
+                      if (confirmed) {
+                        performActionOnIds(Array.from(selectedItemIds), 'confirm', 'returnLoan');
+                      }
+                    }}>🔙 החזר השאלה</button>
+                  ) : Array.from(selectedItemIds).every(id => equipment.find(e => e.id === id)?.status !== 'borrowed') && (
+                    <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('loan'); }}>📤 השאלה</button>
+                  )}
+
+                  {Array.from(selectedItemIds).every(id => equipment.find(e => e.id === id)?.status !== 'borrowed') && (
+                    <>
+                      <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('move'); }}>📦 העברה</button>
+                      <button className="bulk-btn" onClick={() => { setTempSelection('7'); setBulkAction('validationDays'); }}>⏱️ זמן וידוא</button>
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>

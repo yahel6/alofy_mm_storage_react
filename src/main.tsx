@@ -44,15 +44,13 @@ const router = createBrowserRouter([
     path: "/",
     element: (
       <ProtectedRoute>
-        <DialogProvider>
-          <DatabaseProvider>
-            <ValidationProvider>
-              <SelectionProvider>
-                <App />
-              </SelectionProvider>
-            </ValidationProvider>
-          </DatabaseProvider>
-        </DialogProvider>
+        <DatabaseProvider>
+          <ValidationProvider>
+            <SelectionProvider>
+              <App />
+            </SelectionProvider>
+          </ValidationProvider>
+        </DatabaseProvider>
       </ProtectedRoute>
     ),
     // כל הנתיבים כאן יוצגו בתוך ה-<Outlet /> של App.tsx
@@ -159,9 +157,11 @@ import TourProviderWrapper from './components/TourProviderWrapper.tsx';
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <OfflineProvider>
-      <TourProviderWrapper>
-        <RouterProvider router={router} />
-      </TourProviderWrapper>
+      <DialogProvider>
+        <TourProviderWrapper>
+          <RouterProvider router={router} />
+        </TourProviderWrapper>
+      </DialogProvider>
     </OfflineProvider>
   </React.StrictMode>,
 )

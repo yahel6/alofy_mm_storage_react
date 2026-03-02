@@ -25,6 +25,7 @@ const statusOptions: { id: EquipmentStatus; text: string; dotClass: string }[] =
     { id: 'broken', text: 'לא כשיר', dotClass: 'broken' },
     { id: 'missing', text: 'חסר', dotClass: 'missing' },
     { id: 'loaned', text: 'בפעילות', dotClass: 'loaned' },
+    { id: 'borrowed', text: 'ציוד מושאל', dotClass: 'borrowed' },
 ];
 
 const getStatusColor = (statusId: EquipmentStatus) => {
@@ -35,6 +36,7 @@ const getStatusColor = (statusId: EquipmentStatus) => {
         case 'broken': return 'var(--status-red)';
         case 'missing': return 'var(--status-red)';
         case 'loaned': return 'var(--status-grey)';
+        case 'borrowed': return 'var(--status-orange)';
         default: return 'transparent';
     }
 };

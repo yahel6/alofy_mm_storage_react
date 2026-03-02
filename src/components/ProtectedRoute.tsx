@@ -4,6 +4,7 @@ import { auth, db } from '../firebaseConfig'; // מייבאים את משתנה 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Navigate } from 'react-router-dom'; // זה כלי ה"זריקה" (redirect)
 import LoadingScreen from './LoadingScreen';
+import PendingApprovalPage from '../pages/PendingApprovalPage';
 
 // הרכיב הזה מקבל "ילדים" (children)
 // הילדים האלה יהיו כל האפליקציה שלנו
@@ -65,12 +66,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (approved === false) {
-    return (
-      <div style={{ padding: 24, textAlign: 'center' }}>
-        <h2>הבקשה שלך ממתינה לאישור</h2>
-        <p>פנה לאדמין כדי לאשר את החשבון.</p>
-      </div>
-    );
+    return <PendingApprovalPage />;
   }
 
   // ...אז תציג את הילדים (שזה יהיה <App />)
