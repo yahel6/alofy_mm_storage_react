@@ -13,6 +13,7 @@ interface CustomSelectProps {
     placeholder?: string;
     className?: string;
     disabled?: boolean;
+    openUp?: boolean;
 }
 
 const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -22,6 +23,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     placeholder = 'בחר...',
     className = '',
     disabled = false,
+    openUp = false,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -63,7 +65,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
             </button>
 
             {isOpen && (
-                <div className="custom-select-dropdown">
+                <div className={`custom-select-dropdown ${openUp ? 'open-up' : ''}`}>
                     <ul className="custom-select-options">
                         {options.length === 0 ? (
                             <li className="custom-select-option empty-message">אין נתונים</li>

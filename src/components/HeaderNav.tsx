@@ -17,9 +17,12 @@ interface HeaderNavProps {
   showBranding?: boolean;
 }
 
+import { useUI } from '../contexts/UIContext';
+
 const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick, onBack, showBranding }) => {
   const navigate = useNavigate();
   const { currentUser, supportChats } = useDatabase();
+  const { shouldHighlightProfile, setShouldHighlightProfile } = useUI();
 
   const hasUnreadSupport = React.useMemo(() => {
     if (!currentUser) return false;
@@ -40,10 +43,17 @@ const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick, onBack
     }
   };
 
+  const handleProfileClick = () => {
+    if (shouldHighlightProfile) {
+      setShouldHighlightProfile(false);
+    }
+    navigate('/profile');
+  };
+
   return (
-    <div className="header-nav">
+    <div className="header-nav" style={{ zIndex: shouldHighlightProfile ? 10001 : 1000 }}>
       {!showBranding && (
-        <span className="back-button" onClick={handleBack}>
+        <span className="back-button" onClick={handleBack} style={{ pointerEvents: shouldHighlightProfile ? 'none' : 'auto' }}>
           &larr; חזור
         </span>
       )}
@@ -59,14 +69,27 @@ const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick, onBack
         )}
       </div>
 
-      <div className="header-left-actions" style={{ position: 'absolute', left: '16px', display: 'flex', gap: '8px', alignItems: 'center', zIndex: 10 }}>
+      <div className="header-left-actions">
         {onOptionsMenuClick && (
-          <div className="header-icon-btn" onClick={onOptionsMenuClick}>
+          <div className="header-icon-btn" onClick={onOptionsMenuClick} style={{ pointerEvents: shouldHighlightProfile ? 'none' : 'auto', opacity: shouldHighlightProfile ? 0.3 : 1 }}>
             <OptionsIcon />
           </div>
         )}
 
-        <div className="header-icon-btn" onClick={() => navigate('/profile')} title="פרופיל אישי" style={{ flexDirection: 'column', gap: '2px', position: 'relative' }} data-tour="profile-btn">
+        <div
+          className={`header-icon-btn ${shouldHighlightProfile ? 'pulse-highlight' : ''}`}
+          onClick={handleProfileClick}
+          title="פרופיל אישי"
+          style={{
+            flexDirection: 'column',
+            gap: '2px',
+            position: 'relative',
+            zIndex: shouldHighlightProfile ? 10001 : 'auto',
+            background: shouldHighlightProfile ? 'var(--card-bg-color)' : 'transparent',
+            borderRadius: shouldHighlightProfile ? '12px' : '0'
+          }}
+          data-tour="profile-btn"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px">
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
           </svg>

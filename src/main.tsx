@@ -44,13 +44,7 @@ const router = createBrowserRouter([
     path: "/",
     element: (
       <ProtectedRoute>
-        <DatabaseProvider>
-          <ValidationProvider>
-            <SelectionProvider>
-              <App />
-            </SelectionProvider>
-          </ValidationProvider>
-        </DatabaseProvider>
+        <App />
       </ProtectedRoute>
     ),
     // כל הנתיבים כאן יוצגו בתוך ה-<Outlet /> של App.tsx
@@ -151,16 +145,27 @@ const router = createBrowserRouter([
   },
 ]);
 
+import { UIProvider } from './contexts/UIContext.tsx';
 import TourProviderWrapper from './components/TourProviderWrapper.tsx';
+import UpdatePrompt from './components/UpdatePrompt.tsx';
 
 // רינדור האפליקציה
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <OfflineProvider>
       <DialogProvider>
-        <TourProviderWrapper>
-          <RouterProvider router={router} />
-        </TourProviderWrapper>
+        <UIProvider>
+          <DatabaseProvider>
+            <ValidationProvider>
+              <SelectionProvider>
+                <TourProviderWrapper>
+                  <UpdatePrompt />
+                  <RouterProvider router={router} />
+                </TourProviderWrapper>
+              </SelectionProvider>
+            </ValidationProvider>
+          </DatabaseProvider>
+        </UIProvider>
       </DialogProvider>
     </OfflineProvider>
   </React.StrictMode>,

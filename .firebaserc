@@ -2,6 +2,14 @@
   "projects": {
     "default": "alofy-mm-storage-app"
   },
-  "targets": {},
+  "targets": {
+    "alofy-mm-storage-app": {
+      "hosting": {
+        "app": [
+          "alofy-mm-storage-app"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

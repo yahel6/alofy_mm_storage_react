@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation, matchPath } from "react-router-dom";
 import BottomNav from './components/BottomNav.tsx';
 import Fab from './components/Fab.tsx';
@@ -7,6 +7,7 @@ import QuickAddModal from './components/QuickAddModal.tsx';
 import OfflineBanner from './components/OfflineBanner.tsx';
 import { useOffline } from './contexts/OfflineContext.tsx';
 import { useDatabase } from './contexts/DatabaseContext.tsx';
+import { usePushNotifications } from './hooks/usePushNotifications';
 // --- תיקון: ייבוא AnimatePresence ו-motion בשביל עמוד במעבר ---
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 
@@ -39,10 +40,16 @@ const pageAnimation: Variants = {
 };
 // --- סוף התיקון ---
 
+import { useUI } from './contexts/UIContext.tsx';
+
 function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const location = useLocation();
   const { isOffline } = useOffline();
+  const { shouldHighlightProfile } = useUI();
+
+  // Register for push notifications
+  usePushNotifications();
 
   // Detect if we are in a warehouse details page to pass context to the modal
   const warehouseMatch = matchPath({ path: "/warehouses/:warehouseId" }, location.pathname);
@@ -52,6 +59,32 @@ function App() {
   const { warehouses, currentUser } = useDatabase();
   const currentWarehouse = warehouses.find(w => w.id === currentWarehouseId);
   const isDemoMode = !!(currentWarehouse?.isDemo && currentUser?.role !== 'admin');
+
+  // Global blocker for forced interaction
+  useEffect(() => {
+    if (shouldHighlightProfile) {
+      const blocker = (e: Event) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('[data-tour="profile-btn"]')) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      };
+
+      // Capture phase to intercept before any other handlers
+      window.addEventListener('click', blocker, true);
+      window.addEventListener('mousedown', blocker, true);
+      window.addEventListener('touchstart', blocker, true);
+      window.addEventListener('pointerdown', blocker, true);
+
+      return () => {
+        window.removeEventListener('click', blocker, true);
+        window.removeEventListener('mousedown', blocker, true);
+        window.removeEventListener('touchstart', blocker, true);
+        window.removeEventListener('pointerdown', blocker, true);
+      };
+    }
+  }, [shouldHighlightProfile]);
 
   return (
     <div className="app-container">
@@ -84,6 +117,43 @@ function App() {
       </main>
 
       <BottomNav />
+
+      {/* Global blocking overlay for forced interaction */}
+      {shouldHighlightProfile && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          zIndex: 9999,
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          textAlign: 'center',
+          padding: '20px',
+          pointerEvents: 'none' // Clicks pass through, but blocker intercepts them
+        }}>
+          <div style={{
+            background: 'var(--card-bg-color)',
+            padding: '24px',
+            borderRadius: '20px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            maxWidth: '300px',
+            pointerEvents: 'auto' // Allow clicks on the instruction box itself if needed (though not necessary)
+          }}>
+            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500, direction: 'rtl' }}>
+              כמעט סיימנו! עכשיו לחצו על הפרופיל כדי להגדיר את השם שלכם, ותבקשו להצטרף לצוות שלכם.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* FAB is hidden when offline, or in demo mode for non-admin */}
       {!isOffline && !isDemoMode && (

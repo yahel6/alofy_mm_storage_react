@@ -357,7 +357,12 @@ function WarehouseDetailsPage() {
   }
 
   const warehouse = warehouses.find(w => w.id === warehouseId);
-  const otherWarehouses = warehouses.filter(w => w.id !== warehouseId);
+  const userGroupIds = currentUser?.groupIds || [];
+  const otherWarehouses = warehouses.filter(w =>
+    w.id !== warehouseId &&
+    !w.isDemo &&
+    (isUserAdmin || (w.groupId && userGroupIds.includes(w.groupId)))
+  );
 
   // מצב מחסן לדוגמא
   const isDemoWarehouse = !!warehouse?.isDemo;
@@ -410,6 +415,7 @@ function WarehouseDetailsPage() {
           onChange={setTempSelection}
           options={otherWarehouses.map(w => ({ value: w.id, label: w.name }))}
           placeholder="בחר מחסן יעד..."
+          openUp
         />
       );
     } else if (bulkAction === 'copy') {
@@ -420,6 +426,7 @@ function WarehouseDetailsPage() {
           onChange={setTempSelection}
           options={otherWarehouses.map(w => ({ value: w.id, label: w.name }))}
           placeholder="בחר מחסן יעד..."
+          openUp
         />
       );
     } else if (bulkAction === 'activity') {
@@ -449,6 +456,7 @@ function WarehouseDetailsPage() {
               label: `${w.name} (${groups.find(g => g.id === w.groupId)?.name || 'ללא קבוצה'})`
             }))}
             placeholder="בחר מחסן..."
+            openUp
           />
         </div>
       );

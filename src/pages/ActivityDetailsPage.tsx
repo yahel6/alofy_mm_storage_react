@@ -12,6 +12,7 @@ import EquipmentItemRow from '../components/EquipmentItemRow';
 import ActivityOptionsModal from '../components/ActivityOptionsModal';
 import ResolveGapModal from '../components/ResolveGapModal';
 import StatusModal from '../components/StatusModal';
+import ItemDetailsModal from '../components/ItemDetailsModal'; // Added
 import ValidationModal from '../components/ValidationModal';
 import FilterChips from '../components/FilterChips';
 import LoadingScreen from '../components/LoadingScreen';
@@ -54,6 +55,7 @@ function ActivityDetailsPage() {
   const [gapItemGroup, setGapItemGroup] = useState<EquipmentItem[] | null>(null);
   const [selectedItemGroup, setSelectedItemGroup] = useState<EquipmentItem[] | null>(null);
   const [validationModalItem, setValidationModalItem] = useState<EquipmentItem | null>(null);
+  const [subItemsModalItemId, setSubItemsModalItemId] = useState<string | null>(null); // Added
 
   // Enhancement State
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -487,6 +489,7 @@ function ActivityDetailsPage() {
                     }
                   });
                 }}
+                onOpenSubItems={(itm: any) => setSubItemsModalItemId(itm.id)} // Added
                 onLongPress={() => {
                   if (!isSelectionMode) {
                     toggleSelectionMode();
@@ -880,6 +883,13 @@ function ActivityDetailsPage() {
           item={validationModalItem}
           scopeId={scopeId}
           onClose={() => setValidationModalItem(null)}
+        />
+      )}
+
+      {subItemsModalItemId && (
+        <ItemDetailsModal
+          itemId={subItemsModalItemId}
+          onClose={() => setSubItemsModalItemId(null)}
         />
       )}
       {/* --- סוף הוספת רינדור --- */}

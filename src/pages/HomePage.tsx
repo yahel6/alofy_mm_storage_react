@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useTour } from '@reactour/tour';
+import { useUI } from '../contexts/UIContext';
 import HeaderNav from '../components/HeaderNav';
 import LoadingScreen from '../components/LoadingScreen';
 import InstallPrompt from '../components/InstallPrompt';
@@ -37,17 +38,24 @@ function HomePage() {
   const { setIsOpen } = useTour();
   const [showLoansModal, setShowLoansModal] = useState(false);
 
+  const { hasCompletedOnboarding } = useUI();
+
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && !hasCompletedOnboarding && !isLoading) {
       const storageKey = `ordo_onboarding_shown_${currentUser.uid}`;
       const hasShown = localStorage.getItem(storageKey);
 
       if (!hasShown) {
-        setIsOpen(true);
-        localStorage.setItem(storageKey, 'true');
+        console.log("HomePage: Triggering tour start for new user...");
+        // Small delay to ensure DOM is fully ready and stable
+        const timer = setTimeout(() => {
+          console.log("HomePage: Calling setIsOpen(true)");
+          setIsOpen(true);
+        }, 300);
+        return () => clearTimeout(timer);
       }
     }
-  }, [currentUser, setIsOpen]);
+  }, [currentUser, setIsOpen, hasCompletedOnboarding, isLoading]);
 
   const attentionItems = useMemo(() => {
     const today = new Date();

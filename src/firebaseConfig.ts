@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getMessaging } from "firebase/messaging";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,6 +21,7 @@ const app = initializeApp(firebaseConfig);
 // ייצוא השירותים כדי שנוכל להשתמש בהם בכל האפליקציה
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const messaging = getMessaging(app);
 
 // הפעלת מטמון אופליין (IndexedDB) - שומר את הנתונים לצפייה ללא אינטרנט
 enableIndexedDbPersistence(db).catch((err) => {

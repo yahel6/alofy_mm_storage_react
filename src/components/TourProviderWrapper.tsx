@@ -1,65 +1,69 @@
 import React from 'react';
 import { TourProvider, type StepType } from '@reactour/tour';
 
-// Helper component for rich text formatting and injecting the Skip button
-const TourContent = ({ title, content, setIsOpen, isFinalStep }: { title: string; content: React.ReactNode; setIsOpen: (val: boolean) => void; isFinalStep?: boolean }) => (
-    <div style={{ padding: '8px 0', lineHeight: '1.6', fontSize: '1rem', position: 'relative' }}>
-        <button
-            onClick={() => setIsOpen(false)}
-            style={{
-                position: 'absolute',
-                top: '-45px',
-                left: '-10px',
-                background: 'rgba(255,255,255,0.1)',
-                color: 'var(--text-secondary)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '20px',
-                padding: '8px 20px',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                backdropFilter: 'blur(4px)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s ease',
-                fontWeight: 500
-            }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-        >
-            דילוג
-        </button>
-        <h3 style={{ margin: '0 0 12px 0', color: 'var(--accent-blue)', fontSize: '1.4rem', fontWeight: 600 }}>{title}</h3>
-        <div style={{ color: 'var(--text-primary)', whiteSpace: 'pre-line' }}>{content}</div>
-        {isFinalStep && (
-            <button
-                onClick={() => setIsOpen(false)}
-                style={{
-                    marginTop: '32px',
-                    width: '100%',
-                    padding: '16px',
-                    background: 'var(--accent-blue)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '16px',
-                    fontSize: '1.2rem',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 15px rgba(0,123,255,0.3)'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-                סגור
-            </button>
-        )}
-    </div>
-);
+import { useUI } from '../contexts/UIContext';
+import { useDatabase } from '../contexts/DatabaseContext';
+
+// Helper component for rich text formatting
+const TourContent = ({ title, content, setIsOpen, isFinalStep }: { title: string; content: React.ReactNode; setIsOpen: (val: boolean) => void; isFinalStep?: boolean }) => {
+    const { setShouldHighlightProfile, setHasCompletedOnboarding } = useUI();
+    const { currentUser } = useDatabase();
+
+    const handleClose = () => {
+        setIsOpen(false);
+        if (isFinalStep) {
+            setHasCompletedOnboarding(true);
+            if (currentUser) {
+                localStorage.setItem(`ordo_onboarding_shown_${currentUser.uid}`, 'true');
+            }
+            setShouldHighlightProfile(true);
+        }
+    };
+
+    return (
+        <div style={{
+            padding: '8px 0',
+            lineHeight: '1.6',
+            fontSize: '1rem',
+            position: 'relative',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column'
+        }}>
+            {/* כפתור דילוג הוסר כדי להפוך את המדריך לחובה */}
+            <h3 style={{ margin: '0 0 12px 0', color: 'var(--accent-blue)', fontSize: '1.4rem', fontWeight: 600 }}>{title}</h3>
+            <div style={{ color: 'var(--text-primary)', whiteSpace: 'pre-line' }}>{content}</div>
+            {isFinalStep && (
+                <button
+                    onClick={handleClose}
+                    style={{
+                        marginTop: 'auto',
+                        width: '100%',
+                        padding: '16px',
+                        background: 'var(--accent-blue)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '16px',
+                        fontSize: '1.2rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 4px 15px rgba(0,123,255,0.3)'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                    סגור
+                </button>
+            )}
+        </div>
+    );
+};
 
 const steps: StepType[] = [
     {
         selector: '.welcome-section', // Centered on the welcome text
+        position: 'center',
         content: ({ setIsOpen }: any) => (
             <TourContent
                 setIsOpen={setIsOpen}
@@ -70,6 +74,7 @@ const steps: StepType[] = [
     },
     {
         selector: '[data-tour="profile-btn"]',
+        position: 'center',
         content: ({ setIsOpen }: any) => (
             <TourContent
                 setIsOpen={setIsOpen}
@@ -83,6 +88,7 @@ const steps: StepType[] = [
     },
     {
         selector: '[data-tour="profile-btn"]',
+        position: 'center',
         content: ({ setIsOpen }: any) => (
             <TourContent
                 setIsOpen={setIsOpen}
@@ -93,6 +99,7 @@ const steps: StepType[] = [
     },
     {
         selector: '[data-tour="warehouses-nav"]',
+        position: 'center',
         content: ({ setIsOpen }: any) => (
             <TourContent
                 setIsOpen={setIsOpen}
@@ -103,6 +110,7 @@ const steps: StepType[] = [
     },
     {
         selector: '[data-tour="activities-nav"]',
+        position: 'center',
         content: ({ setIsOpen }: any) => (
             <TourContent
                 setIsOpen={setIsOpen}
@@ -116,6 +124,7 @@ const steps: StepType[] = [
     },
     {
         selector: '#attention-card',
+        position: 'center',
         content: ({ setIsOpen }: any) => (
             <TourContent
                 setIsOpen={setIsOpen}
@@ -126,6 +135,7 @@ const steps: StepType[] = [
     },
     {
         selector: '[data-tour="competences-nav"]',
+        position: 'center',
         content: ({ setIsOpen }: any) => (
             <TourContent
                 setIsOpen={setIsOpen}
@@ -136,6 +146,7 @@ const steps: StepType[] = [
     },
     {
         selector: '.welcome-section', // Back to center for summary
+        position: 'center',
         content: ({ setIsOpen }: any) => (
             <TourContent
                 setIsOpen={setIsOpen}
@@ -165,6 +176,16 @@ const styles = {
         direction: 'rtl',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         maxWidth: '420px',
+        width: '90vw',
+        height: '450px', // Increased slightly for better fit
+        zIndex: 1000002,
+        display: 'flex',
+        flexDirection: 'column',
+    }),
+    controls: (base: any) => ({
+        ...base,
+        marginTop: 'auto', // Push navigation to the absolute bottom
+        paddingBottom: '10px',
     }),
     dot: (base: any, state?: any) => {
         const current = state?.current || false;

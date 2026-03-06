@@ -244,7 +244,9 @@ function EquipmentFormPage() {
               onChange={(val) => handleChange({ target: { id: 'managerUserId', value: val } } as any)}
               options={[
                 { value: "", label: "ללא אחראי" },
-                ...users.map(u => ({ value: u.uid, label: u.displayName || 'ללא שם' }))
+                ...users
+                  .filter(u => !selectedWarehouse?.groupId || u.groupIds?.includes(selectedWarehouse.groupId))
+                  .map(u => ({ value: u.uid, label: u.displayName || 'ללא שם' }))
               ]}
               placeholder="ללא אחראי"
             />

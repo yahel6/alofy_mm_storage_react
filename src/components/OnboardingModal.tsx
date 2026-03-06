@@ -58,10 +58,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose }) => {
     return (
         <div className="onboarding-overlay active">
             <div className="onboarding-modal">
-                {/* כפתור דלג */}
-                <button className="onboarding-skip" onClick={onClose}>
-                    דלג
-                </button>
+                {/* כפתור דלג הוסר כדי להפוך את ההסבר לחובה */}
 
                 {/* תוכן השקף */}
                 <div className="onboarding-content">
