@@ -155,6 +155,7 @@ function FilteredEquipmentPage() {
                     { value: "loaned", label: "בפעילות" },
                   ]}
                   placeholder="בחר סטטוס..."
+                  openUp
                 />
               ) : (
                 <input

@@ -81,6 +81,8 @@ function WarehouseDetailsPage() {
   // State for splitting
   const [splitCandidateGroup, setSplitCandidateGroup] = useState<EquipmentItem[] | null>(null);
 
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const toggleSelectionMode = () => {
     globalToggleSelectionMode(scopeId);
     setBulkAction(null);
@@ -108,6 +110,8 @@ function WarehouseDetailsPage() {
   };
 
   const performActionOnIds = async (ids: string[], currentTempSelection?: string, actionOverride?: typeof bulkAction) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
     const activeSelection = currentTempSelection || tempSelection;
     const activeAction = actionOverride || bulkAction;
     let success = false;
@@ -120,7 +124,7 @@ function WarehouseDetailsPage() {
         success = await bulkMoveItemsToWarehouse(ids, activeSelection);
       } else if (activeAction as any === 'activity') {
         success = await bulkAssignItemsToActivity(ids, activeSelection);
-      } else if (activeAction as any === 'copy') {
+      } else if (activeAction === 'copy') {
         success = await bulkCopyItemsToWarehouse(ids, activeSelection);
       } else if (activeAction === 'validationDays') {
         const days = parseInt(activeSelection, 10);
@@ -146,6 +150,7 @@ function WarehouseDetailsPage() {
     } else {
       await showAlert('אירעה שגיאה בביצוע הפעולה', 'שגיאה');
     }
+    setIsProcessing(false);
   };
 
   const executeBulkAction = async () => {
@@ -360,8 +365,7 @@ function WarehouseDetailsPage() {
   const userGroupIds = currentUser?.groupIds || [];
   const otherWarehouses = warehouses.filter(w =>
     w.id !== warehouseId &&
-    !w.isDemo &&
-    (isUserAdmin || (w.groupId && userGroupIds.includes(w.groupId)))
+    (isUserAdmin || (!w.isDemo && w.groupId && userGroupIds.includes(w.groupId)))
   );
 
   // מצב מחסן לדוגמא
@@ -389,6 +393,7 @@ function WarehouseDetailsPage() {
             ...(warehouse.categories || []).map(c => ({ value: c, label: c }))
           ]}
           placeholder="בחר קטגוריה..."
+          openUp
         />
       );
     } else if (bulkAction === 'status') {
@@ -437,6 +442,7 @@ function WarehouseDetailsPage() {
           onChange={setTempSelection}
           options={activities.map(a => ({ value: a.id, label: a.name }))}
           placeholder="בחר פעילות..."
+          openUp
         />
       );
     } else if (bulkAction === 'loan') {
@@ -460,6 +466,27 @@ function WarehouseDetailsPage() {
           />
         </div>
       );
+    } else if (bulkAction === 'validationDays') {
+      title = 'עדכון זמן וידוא (ימים)';
+      content = (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '14px', color: '#888' }}>בחר כל כמה ימים נדרש לוודא פריט זה:</p>
+          <CustomSelect
+            value={tempSelection}
+            onChange={setTempSelection}
+            options={[
+              { value: "1", label: "כל יום" },
+              { value: "7", label: "כל שבוע" },
+              { value: "30", label: "כל חודש" },
+              { value: "90", label: "כל רבעון" },
+              { value: "180", label: "כל חצי שנה" },
+              { value: "365", label: "כל שנה" },
+            ]}
+            placeholder="בחר מספר ימים..."
+            openUp
+          />
+        </div>
+      );
     }
     else if (bulkAction === 'returnLoan') {
       title = 'החזר השאלה';
@@ -474,8 +501,22 @@ function WarehouseDetailsPage() {
             {content}
           </div>
           <div className="modal-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <button className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '8px' }} onClick={() => setBulkAction(null)}>ביטול</button>
-            <button className="btn-primary" style={{ padding: '8px 16px', margin: 0, width: 'auto' }} disabled={!tempSelection && bulkAction !== 'category'} onClick={executeBulkAction}>אישור</button>
+            <button
+              className="btn-secondary"
+              style={{ padding: '8px 16px', borderRadius: '8px' }}
+              onClick={() => setBulkAction(null)}
+              disabled={isProcessing}
+            >
+              ביטול
+            </button>
+            <button
+              className="btn-primary"
+              style={{ padding: '8px 16px', margin: 0, width: 'auto' }}
+              disabled={isProcessing || (!tempSelection && bulkAction !== 'category')}
+              onClick={executeBulkAction}
+            >
+              {isProcessing ? 'מבצע...' : 'אישור'}
+            </button>
           </div>
         </div>
       </div>
@@ -638,7 +679,6 @@ function WarehouseDetailsPage() {
                 </>
               )}
 
-              {/* Copy — always available */}
               {!isValidationMode && (
                 <button className="bulk-btn" onClick={() => { setTempSelection(''); setBulkAction('copy'); }}>📋 העתקה</button>
               )}
@@ -727,6 +767,16 @@ function WarehouseDetailsPage() {
         <StatusModal
           groupItems={selectedItemGroup}
           onClose={() => setSelectedItemGroup(null)}
+          isDemoReadOnly={isDemoReadOnly}
+          onCopy={() => {
+            clearSelection(scopeId);
+            const ids = selectedItemGroup.map(i => i.id);
+            setBulkAction('copy');
+            setTempSelection('');
+            ids.forEach(id => {
+              toggleItemSelection(id);
+            });
+          }}
         />
       )}
 
@@ -761,6 +811,15 @@ function WarehouseDetailsPage() {
           itemId={subItemsModalItemId}
           onClose={() => setSubItemsModalItemId(null)}
           isDemoWarehouse={isDemoWarehouse}
+          onCopy={() => {
+            if (subItemsModalItemId) {
+              clearSelection(scopeId);
+              toggleItemSelection(subItemsModalItemId);
+              setBulkAction('copy');
+              setTempSelection('');
+              setSubItemsModalItemId(null); // Close details modal to show copy modal
+            }
+          }}
         />
       )}
     </div>

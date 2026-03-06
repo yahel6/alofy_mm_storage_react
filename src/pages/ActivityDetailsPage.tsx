@@ -391,6 +391,7 @@ function ActivityDetailsPage() {
             ...availableCategories.map(c => ({ value: c, label: c }))
           ]}
           placeholder="בחר קטגוריה..."
+          openUp
         />
       );
     } else if (bulkAction === 'status') {
@@ -407,6 +408,7 @@ function ActivityDetailsPage() {
             { value: "loaned", label: "מושאל" },
           ]}
           placeholder="בחר סטטוס..."
+          openUp
         />
       );
     }

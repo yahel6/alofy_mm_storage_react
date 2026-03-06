@@ -684,11 +684,12 @@ export const bulkMoveItemsToWarehouse = async (itemIds: string[], targetWarehous
 
   const batch = writeBatch(db);
   const itemsRef = collection(db, 'equipment');
+  const targetWarehouseRef = doc(db, 'warehouses', targetWarehouseId);
 
   try {
     // 1. Fetch all items to be moved
     const movedItemsQuery = await Promise.all(itemIds.map(id => getDoc(doc(db, 'equipment', id))));
-    const movedItems = movedItemsQuery.map(snap => ({ id: snap.id, ...snap.data() } as EquipmentItem));
+    const movedItems = movedItemsQuery.filter(s => s.exists()).map(snap => ({ id: snap.id, ...snap.data() } as EquipmentItem));
 
     // 2. Fetch all items in target warehouse (for matching)
     // Optimization: In a real large app, we might query by name, but here we fetch all in target warehouse.
@@ -736,6 +737,14 @@ export const bulkMoveItemsToWarehouse = async (itemIds: string[], targetWarehous
       }
     }
 
+    // 3. Sync Categories to target warehouse
+    const uniqueCategories = Array.from(new Set(movedItems.map(i => (i.category || "").trim()).filter(Boolean)));
+    if (uniqueCategories.length > 0) {
+      batch.update(targetWarehouseRef, {
+        categories: arrayUnion(...uniqueCategories)
+      });
+    }
+
     await batch.commit();
     console.log("העברת פריטים הושלמה.");
     return true;
@@ -756,11 +765,12 @@ export const bulkCopyItemsToWarehouse = async (itemIds: string[], targetWarehous
 
   const batch = writeBatch(db);
   const itemsRef = collection(db, 'equipment');
+  const targetWarehouseRef = doc(db, 'warehouses', targetWarehouseId);
 
   try {
     // 1. Fetch all items to copy
     const snaps = await Promise.all(itemIds.map(id => getDoc(doc(db, 'equipment', id))));
-    const items = snaps.map(snap => ({ id: snap.id, ...snap.data() } as EquipmentItem));
+    const items = snaps.filter(s => s.exists()).map(snap => ({ id: snap.id, ...snap.data() } as EquipmentItem));
 
     for (const item of items) {
       if (!item) continue;
@@ -802,6 +812,14 @@ export const bulkCopyItemsToWarehouse = async (itemIds: string[], targetWarehous
         });
         console.log(`פריט ${item.name} הועתק כפריט חדש.`);
       }
+    }
+
+    // 3. Sync Categories to target warehouse
+    const uniqueCategories = Array.from(new Set(items.map(i => (i.category || "").trim()).filter(Boolean)));
+    if (uniqueCategories.length > 0) {
+      batch.update(targetWarehouseRef, {
+        categories: arrayUnion(...uniqueCategories)
+      });
     }
 
     await batch.commit();

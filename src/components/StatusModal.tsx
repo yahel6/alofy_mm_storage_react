@@ -21,9 +21,11 @@ const statusOptions = [
 interface StatusModalProps {
   groupItems: EquipmentItem[];
   onClose: () => void;
+  isDemoReadOnly?: boolean;
+  onCopy?: () => void;
 }
 
-const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose }) => {
+const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose, isDemoReadOnly, onCopy }) => {
   const navigate = useNavigate();
   const { isOffline } = useOffline();
   const { showAlert, showConfirm } = useDialog();
@@ -124,6 +126,27 @@ const StatusModal: React.FC<StatusModalProps> = ({ groupItems, onClose }) => {
                   style={{ margin: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
                   🔙 החזר השאלה
+                </button>
+              </div>
+            </div>
+          ) : isDemoReadOnly ? (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '40px', marginBottom: '16px' }}>📚</div>
+              <h3 style={{ color: 'var(--action-color)', marginBottom: '8px' }}>מחסן לדוגמא</h3>
+              <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.5' }}>
+                מחסן זה מיועד לצפייה והעתקה בלבד. ניתן להעתיק את הפריט למחסן שלך כדי לנהל אותו.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '20px' }}>
+                <button
+                  className="modal-button btn-edit-details"
+                  onClick={() => {
+                    onClose();
+                    onCopy?.();
+                  }}
+                  style={{ margin: 0, width: '100%', background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))' }}
+                >
+                  📋 העתק למחסן שלי
                 </button>
               </div>
             </div>

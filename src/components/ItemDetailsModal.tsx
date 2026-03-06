@@ -16,6 +16,7 @@ interface ItemDetailsModalProps {
     itemId: string;
     onClose: () => void;
     isDemoWarehouse?: boolean;
+    onCopy?: () => void;
 }
 
 const statusOptions: { id: EquipmentStatus; text: string; dotClass: string }[] = [
@@ -41,7 +42,7 @@ const getStatusColor = (statusId: EquipmentStatus) => {
     }
 };
 
-const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, isDemoWarehouse }) => {
+const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, isDemoWarehouse, onCopy }) => {
     const { equipment, currentUser } = useDatabase();
     const { isOffline } = useOffline();
     const { showAlert, showConfirm } = useDialog();
@@ -131,8 +132,35 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, is
 
                 {/* Header */}
                 <div className="modal-header-section">
-                    <h3>{item.name}</h3>
-                    <button className="modal-close-icon" onClick={onClose}>&times;</button>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <h3 style={{ margin: 0 }}>{item.name}</h3>
+                        {isDemoWarehouse && (
+                            <span style={{ fontSize: '11px', color: '#f5c518', marginTop: '2px' }}>📚 מחסן לדוגמא</span>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        {isDemoWarehouse && (
+                            <button
+                                onClick={onCopy}
+                                style={{
+                                    background: 'rgba(var(--action-color-rgb), 0.15)',
+                                    color: 'var(--action-color)',
+                                    border: '1px solid var(--action-color)',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                📋 העתק למחסן שלי
+                            </button>
+                        )}
+                        <button className="modal-close-icon" onClick={onClose}>&times;</button>
+                    </div>
                 </div>
 
                 <div className="modal-scrollable-body">

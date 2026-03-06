@@ -27,9 +27,12 @@ function WarehousesPage() {
         ) : (
           warehouses.map(warehouse => {
             const count = getEquipmentCount(warehouse.id);
-            const statusClass = (count.total > 0 && (count.available / count.total) < 0.5)
-              ? 'status-red'
-              : 'status-green';
+            const isDemo = !!warehouse.isDemo;
+            const statusClass = isDemo
+              ? ''
+              : (count.total > 0 && (count.available / count.total) < 0.5)
+                ? 'status-red'
+                : 'status-green';
 
             return (
               // 2. עטיפה ב-Link במקום div
@@ -41,7 +44,7 @@ function WarehousesPage() {
               >
                 <div>
                   <h3 className="warehouse-card-title">
-                    {warehouse.isDemo && (
+                    {isDemo && (
                       <span style={{
                         fontSize: '11px', fontWeight: 'normal',
                         background: 'rgba(255, 204, 0, 0.18)',
@@ -54,7 +57,10 @@ function WarehousesPage() {
                     {warehouse.name}
                   </h3>
                   <div className={`warehouse-card-status ${statusClass}`}>
-                    {count.available}/{count.total} פריטים כשירים
+                    {isDemo
+                      ? `${count.total} פריטים בסך הכל`
+                      : `${count.available}/${count.total} פריטים כשירים`
+                    }
                   </div>
                 </div>
                 <span className="chevron">&#9664;</span>
