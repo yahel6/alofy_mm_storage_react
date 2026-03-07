@@ -17,13 +17,15 @@ body,
     overflow-x: hidden;
     /* Prevent horizontal scroll */
     position: relative;
+    overscroll-behavior-x: none;
+    /* Disable swipe-to-back on some browsers */
 }
 
 body {
     overscroll-behavior-y: none;
     /* Prevent pull-to-refresh if needed, optional but often good for PWA */
-    touch-action: manipulation;
-    /* Faster taps */
+    touch-action: pan-y;
+    /* Only allow vertical scrolling, block horizontal swipe gestures */
 }
 
 :root {

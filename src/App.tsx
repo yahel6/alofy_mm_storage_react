@@ -44,9 +44,33 @@ import { useUI } from './contexts/UIContext.tsx';
 
 function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      // Check if the touch is near the left or right edges (usually where swipe-to-back triggers)
+      const touchX = e.touches[0].clientX;
+      const edgeThreshold = 25; // pixels from the edge
+      const screenWidth = window.innerWidth;
+
+      if (touchX < edgeThreshold || touchX > screenWidth - edgeThreshold) {
+        // Only prevent default if it's a potential edge swipe
+        // This stops the native browser swipe-to-back/forward behavior
+        if (e.cancelable) {
+          // e.preventDefault(); 
+          // Note: preventDefault on touchstart is often not enough alone on iOS 13.4+
+          // or can interfere with normal scroll if not careful.
+          // However, combining this with touch-action: pan-y in CSS is a strong defense.
+        }
+      }
+    };
+
+    // We use a global listener on the document
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    return () => document.removeEventListener('touchstart', handleTouchStart);
+  }, []);
+
   const location = useLocation();
   const { isOffline } = useOffline();
-  const { shouldHighlightProfile } = useUI();
+  const { shouldHighlightProfile, isFabHidden } = useUI();
 
   // Register for push notifications
   usePushNotifications();
@@ -156,7 +180,7 @@ function App() {
       )}
 
       {/* FAB is hidden when offline, or in demo mode for non-admin */}
-      {!isOffline && !isDemoMode && (
+      {!isOffline && !isDemoMode && !isFabHidden && (
         <>
           <Fab onClick={() => setIsAddModalOpen(true)} />
           <QuickAddModal

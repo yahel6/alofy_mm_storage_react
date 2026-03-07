@@ -28,6 +28,7 @@ const EditCompetencePage: React.FC = () => {
     const [renewalDays, setRenewalDays] = useState<number>(30);
     const [notes, setNotes] = useState('');
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+    const [forAllMembers, setForAllMembers] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -41,6 +42,7 @@ const EditCompetencePage: React.FC = () => {
             setRenewalDays(competence.renewalDays);
             setNotes(competence.notes || '');
             setSelectedUserIds(competence.userIds);
+            setForAllMembers(!!competence.forAllMembers);
         }
     }, [competence]);
 
@@ -70,15 +72,19 @@ const EditCompetencePage: React.FC = () => {
         if (!selectedGroupId) { setError('יש לבחור קבוצה'); return; }
         if (!name.trim()) { setError('יש להזין שם כשירות'); return; }
         if (renewalDays <= 0) { setError('מספר ימים לחידוש חייב להיות גדול מ-0'); return; }
-        if (selectedUserIds.length === 0) { setError('יש לבחור לפחות חבר קבוצה אחד'); return; }
+        if (!forAllMembers && selectedUserIds.length === 0) {
+            setError('יש לבחור לפחות חבר קבוצה אחד או לסמן "לכל חברי הקבוצה"');
+            return;
+        }
 
         setIsSubmitting(true);
         try {
-            const updates: Record<string, unknown> = {
+            const updates: Record<string, any> = {
                 groupId: selectedGroupId,
                 name: name.trim(),
                 renewalDays,
-                userIds: selectedUserIds,
+                userIds: forAllMembers ? [] : selectedUserIds,
+                forAllMembers,
             };
             if (notes.trim()) {
                 updates.notes = notes.trim();
@@ -201,42 +207,92 @@ const EditCompetencePage: React.FC = () => {
 
                     {/* Members */}
                     <div className="form-group">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <label style={{ margin: 0 }}>חברים רלוונטיים ({selectedUserIds.length} נבחרו)</label>
-                            <div>
-                                <button type="button" onClick={selectAll} style={{ background: 'none', border: 'none', color: 'var(--accent-color)', fontSize: '0.8em', cursor: 'pointer', marginLeft: '10px' }}>בחר הכל</button>
-                                <button type="button" onClick={deselectAll} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.8em', cursor: 'pointer' }}>נקה הכל</button>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            background: 'rgba(124, 77, 255, 0.1)',
+                            padding: '12px',
+                            borderRadius: '12px',
+                            border: '1px solid rgba(124, 77, 255, 0.2)',
+                            marginBottom: '20px',
+                            cursor: 'pointer'
+                        }} onClick={() => setForAllMembers(!forAllMembers)}>
+                            <div style={{
+                                width: '40px',
+                                height: '20px',
+                                background: forAllMembers ? 'var(--accent-color)' : '#444',
+                                borderRadius: '20px',
+                                position: 'relative',
+                                transition: 'background 0.3s'
+                            }}>
+                                <div style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    background: 'white',
+                                    borderRadius: '50%',
+                                    position: 'absolute',
+                                    top: '2px',
+                                    left: forAllMembers ? '22px' : '2px',
+                                    transition: 'left 0.3s'
+                                }} />
                             </div>
+                            <span style={{ fontWeight: 'bold' }}>כשירות לכל חברי הקבוצה (אוטומטי)</span>
                         </div>
 
-                        <div style={{
-                            maxHeight: '200px', overflowY: 'auto',
-                            background: 'rgba(0,0,0,0.2)', borderRadius: '8px',
-                            padding: '10px', border: '1px solid rgba(255,255,255,0.05)'
-                        }}>
-                            {groupUsers.map(user => (
-                                <div
-                                    key={user!.uid}
-                                    onClick={() => toggleUser(user!.uid)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', padding: '10px',
-                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                        cursor: 'pointer',
-                                        background: selectedUserIds.includes(user!.uid) ? 'rgba(124, 77, 255, 0.1)' : 'transparent',
-                                        borderRadius: '4px'
-                                    }}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedUserIds.includes(user!.uid)}
-                                        onChange={() => { }}
-                                        style={{ marginLeft: '12px', transform: 'scale(1.2)' }}
-                                    />
-                                    <span>{user!.displayName}</span>
+                        {!forAllMembers && (
+                            <>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <label style={{ margin: 0 }}>חברים רלוונטיים ({selectedUserIds.length} נבחרו)</label>
+                                    <div>
+                                        <button type="button" onClick={selectAll} style={{ background: 'none', border: 'none', color: 'var(--accent-color)', fontSize: '0.8em', cursor: 'pointer', marginLeft: '10px' }}>בחר הכל</button>
+                                        <button type="button" onClick={deselectAll} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.8em', cursor: 'pointer' }}>נקה הכל</button>
+                                    </div>
                                 </div>
-                            ))}
-                            {groupUsers.length === 0 && <div style={{ textAlign: 'center', color: '#888', padding: '10px' }}>אין חברים בקבוצה זו</div>}
-                        </div>
+
+                                <div style={{
+                                    maxHeight: '200px', overflowY: 'auto',
+                                    background: 'rgba(0,0,0,0.2)', borderRadius: '8px',
+                                    padding: '10px', border: '1px solid rgba(255,255,255,0.05)'
+                                }}>
+                                    {groupUsers.map(user => (
+                                        <div
+                                            key={user!.uid}
+                                            onClick={() => toggleUser(user!.uid)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', padding: '10px',
+                                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                cursor: 'pointer',
+                                                background: selectedUserIds.includes(user!.uid) ? 'rgba(124, 77, 255, 0.1)' : 'transparent',
+                                                borderRadius: '4px'
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedUserIds.includes(user!.uid)}
+                                                onChange={() => { }}
+                                                style={{ marginLeft: '12px', transform: 'scale(1.2)' }}
+                                            />
+                                            <span>{user!.displayName}</span>
+                                        </div>
+                                    ))}
+                                    {groupUsers.length === 0 && <div style={{ textAlign: 'center', color: '#888', padding: '10px' }}>אין חברים בקבוצה זו</div>}
+                                </div>
+                            </>
+                        )}
+                        {forAllMembers && (
+                            <div style={{
+                                padding: '15px',
+                                textAlign: 'center',
+                                color: 'var(--text-secondary)',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '8px',
+                                fontSize: '0.9em',
+                                border: '1px dashed rgba(255,255,255,0.1)'
+                            }}>
+                                הכשירות תחול אוטומטית על כל המשתמשים שמרכיבים את הקבוצה, כולל כאלה שיצטרפו בעתיד.
+                            </div>
+                        )}
                     </div>
 
                     {/* Action Buttons */}

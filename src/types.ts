@@ -119,6 +119,8 @@ export interface Competence {
   renewalDays: number;
   /** רשימת UIDs של המשתמשים שהכשירות חלה עליהם במסגרת הקבוצה */
   userIds: string[];
+  /** האם הכשירות חלה אוטומטית על כל חברי הקבוצה (נוכחיים ועתידיים) */
+  forAllMembers?: boolean;
   /** הערות או פירוט על הכשירות */
   notes?: string;
   createdAt: string;

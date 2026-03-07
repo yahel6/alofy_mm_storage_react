@@ -5,6 +5,8 @@ interface UIContextType {
     setShouldHighlightProfile: (val: boolean) => void;
     hasCompletedOnboarding: boolean;
     setHasCompletedOnboarding: (val: boolean) => void;
+    isFabHidden: boolean;
+    setIsFabHidden: (val: boolean) => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -12,13 +14,16 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [shouldHighlightProfile, setShouldHighlightProfile] = useState(false);
     const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+    const [isFabHidden, setIsFabHidden] = useState(false);
 
     return (
         <UIContext.Provider value={{
             shouldHighlightProfile,
             setShouldHighlightProfile,
             hasCompletedOnboarding,
-            setHasCompletedOnboarding
+            setHasCompletedOnboarding,
+            isFabHidden,
+            setIsFabHidden
         }}>
             {children}
         </UIContext.Provider>

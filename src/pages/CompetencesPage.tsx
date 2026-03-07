@@ -88,7 +88,7 @@ const CompetencesPage: React.FC = () => {
         }
 
         return filteredUsers.map(user => {
-            const userComps = groupCompetences.filter(c => c.userIds.includes(user.uid));
+            const userComps = groupCompetences.filter(c => c.userIds.includes(user.uid) || c.forAllMembers);
             let totalScore = 0;
             let expectedCount = userComps.length;
 
@@ -118,7 +118,7 @@ const CompetencesPage: React.FC = () => {
         }
 
         return filteredComps.map(comp => {
-            const relevantUserIds = comp.userIds;
+            const relevantUserIds = comp.forAllMembers ? groupUsers.map(u => u.uid) : comp.userIds;
             if (relevantUserIds.length === 0) return { competence: comp, averageScore: 100, userStatuses: [] };
 
             let totalScore = 0;
@@ -142,7 +142,10 @@ const CompetencesPage: React.FC = () => {
     // --- SORT: MY COMPETENCES ---
     const myCompetencesData = useMemo(() => {
         if (!currentUser) return [];
-        let myComps = competences.filter(c => c.userIds.includes(currentUser.uid));
+        let myComps = competences.filter(c =>
+            c.userIds.includes(currentUser.uid) ||
+            (c.forAllMembers && userGroups.some(g => g.id === c.groupId))
+        );
 
         if (searchTerm) {
             myComps = myComps.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));

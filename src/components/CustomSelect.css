@@ -48,8 +48,10 @@
 .custom-select-dropdown {
     position: absolute;
     top: calc(100% + 8px);
-    left: 0;
-    width: 100%;
+    right: 0;
+    min-width: 100%;
+    width: max-content;
+    max-width: 90vw;
     background-color: var(--card-bg-color);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
@@ -58,13 +60,13 @@
     max-height: 250px;
     overflow-y: auto;
     animation: fadeInScale 0.2s ease;
-    transform-origin: top center;
+    transform-origin: top right;
 }
 
 .custom-select-dropdown.open-up {
     top: auto;
     bottom: calc(100% + 8px);
-    transform-origin: bottom center;
+    transform-origin: bottom right;
 }
 
 @keyframes fadeInScale {

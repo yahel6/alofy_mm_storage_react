@@ -84,9 +84,6 @@ const HeaderNav: React.FC<HeaderNavProps> = ({ title, onOptionsMenuClick, onBack
             flexDirection: 'column',
             gap: '2px',
             position: 'relative',
-            zIndex: shouldHighlightProfile ? 10001 : 'auto',
-            background: shouldHighlightProfile ? 'var(--card-bg-color)' : 'transparent',
-            borderRadius: shouldHighlightProfile ? '12px' : '0'
           }}
           data-tour="profile-btn"
         >

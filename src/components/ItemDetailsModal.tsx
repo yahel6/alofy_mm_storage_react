@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { useDialog } from '../contexts/DialogContext';
+import { useUI } from '../contexts/UIContext';
 import type { EquipmentStatus } from '../types';
 import {
     updateSubItemStatus,
@@ -46,8 +47,15 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({ itemId, onClose, is
     const { equipment, currentUser } = useDatabase();
     const { isOffline } = useOffline();
     const { showAlert, showConfirm } = useDialog();
+    const { setIsFabHidden } = useUI();
 
     const isDemoReadOnly = isDemoWarehouse && currentUser?.role !== 'admin';
+
+    // Toggle FAB visibility
+    useEffect(() => {
+        setIsFabHidden(true);
+        return () => setIsFabHidden(false);
+    }, [setIsFabHidden]);
 
     // Auto-update when equipment changes in context
     const item = equipment.find(e => e.id === itemId);

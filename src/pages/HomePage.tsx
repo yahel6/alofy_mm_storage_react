@@ -59,15 +59,22 @@ function HomePage() {
 
   const attentionItems = useMemo(() => {
     const today = new Date();
+    const userGroups = currentUser?.groupIds || [];
     let broken = 0;
     let repair = 0;
     let needsValidation = 0;
     let loanAlerts = 0;
 
     equipment.forEach(item => {
+      // Filter by group: user must be in the group of the warehouse this item belongs to
+      const warehouse = warehouses.find(w => w.id === item.warehouseId);
+      if (!warehouse || (!warehouse.isDemo && !userGroups.includes(warehouse.groupId || ''))) {
+        return;
+      }
+
       if (item.loanInfo) {
-        const isIncoming = item.loanInfo.status === 'pending_borrow' && currentUser?.groupIds?.includes(item.loanInfo.targetGroupId);
-        const isReturning = item.loanInfo.status === 'pending_return' && currentUser?.groupIds?.includes(item.loanInfo.originGroupId);
+        const isIncoming = item.loanInfo.status === 'pending_borrow' && userGroups.includes(item.loanInfo.targetGroupId);
+        const isReturning = item.loanInfo.status === 'pending_return' && userGroups.includes(item.loanInfo.originGroupId);
         if (isIncoming || isReturning) loanAlerts++;
       }
       if (item.status === 'broken') broken++;
@@ -86,8 +93,8 @@ function HomePage() {
     let competencesAlerts = 0;
     if (currentUser) {
       const userCompetences = competences.filter(c =>
-        c.userIds.includes(currentUser.uid) &&
-        currentUser.groupIds?.includes(c.groupId)
+        (c.userIds.includes(currentUser.uid) || c.forAllMembers) &&
+        userGroups.includes(c.groupId)
       );
 
       userCompetences.forEach(comp => {
@@ -109,7 +116,7 @@ function HomePage() {
       { id: 'repair', text: 'פריטים בתיקון', icon: '🔧', iconClass: 'icon-orange', count: repair, path: '/items/filter/repair' },
       { id: 'loans_active', text: 'מרכז השאלות', icon: '📦', iconClass: 'icon-blue', count: loanAlerts, path: '#loans', showBadge: loanAlerts > 0 }
     ];
-  }, [equipment, competences, competenceRecords, currentUser]);
+  }, [equipment, competences, competenceRecords, currentUser, warehouses]);
 
   const { pendingIncoming, pendingReturns, lentOut, borrowedIn } = useMemo(() => {
     const userGroups = currentUser?.groupIds || [];
@@ -132,12 +139,13 @@ function HomePage() {
 
   const upcomingActivities = useMemo(() => {
     const today = new Date();
+    const userGroups = currentUser?.groupIds || [];
     today.setHours(0, 0, 0, 0);
     return activities
-      .filter(act => new Date(act.date) >= today)
+      .filter(act => new Date(act.date) >= today && userGroups.includes(act.groupId || ''))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 3);
-  }, [activities]);
+  }, [activities, currentUser]);
 
   const handleAttentionClick = (path: string) => {
     if (path === '#loans') {

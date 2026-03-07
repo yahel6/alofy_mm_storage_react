@@ -15,6 +15,7 @@ const GroupFormPage: React.FC = () => {
     const { showAlert } = useDialog();
 
     const [name, setName] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -74,6 +75,21 @@ const GroupFormPage: React.FC = () => {
 
                     <div className="form-group">
                         <label>חברי קבוצה ({selectedMembers.length} נבחרו)</label>
+                        <input
+                            type="text"
+                            placeholder="חפש משתמש..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px',
+                                marginBottom: '10px',
+                                background: '#333',
+                                border: '1px solid #444',
+                                borderRadius: '8px',
+                                color: 'white'
+                            }}
+                        />
                         <div className="selection-grid" style={{
                             display: 'grid',
                             gridTemplateColumns: '1fr 1fr',
